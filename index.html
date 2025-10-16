@@ -21,7 +21,7 @@
       <div class="col-12 col-lg-7">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h1 class="h4 mb-3">SQLite3 erstellen &amp; exportieren - V2.6</h1>
+            <h1 class="h4 mb-3">SQLite3 erstellen &amp; exportieren - V2.7</h1>
             <p class="text-muted mb-4">
               Diese Seite erzeugt lokal im Browser (per <span class="mono">sql.js</span>) eine <strong>SQLite3</strong>-Datei
               mit deinem Schema &amp; Startdaten. Nichts verlässt dein Gerät.
@@ -366,104 +366,70 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
       const db = new SQL.Database();
 
       try{
-        // Schema ausführen
-        db.run('BEGIN;');
-        db.run(schemaSQL);
+  // Alles in einer Transaktion
+  db.run('BEGIN;');
 
-        // Optionale Standardzeile für android_metadata (falls gewünscht – nicht gefordert):
-        // db.run(`INSERT INTO android_metadata(locale) VALUES ('de_DE');`);
+  // 1) Schema anlegen
+  db.run(schemaSQL);
 
-        // tblCompany – Zeile 1
-        {
-          const sql = `
-            INSERT INTO tblCompany (
-              SecutestSerialNumber, KeyCode, RegistrationDate, CustomerNumber, Company, Department, Name, Street, PostalCode, City,
-              TelephoneNumber, FaxNumber, Email, Country, Supplier, ArchiveDate, ArchiveInterval, Timestamp
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-          `;
-          const params = [
-            null, // SecutestSerialNumber
-            null, // KeyCode1
-            '2021-09-13 14:46:04', // RegistrationDate1
-            null, // CustomerNumber
-            'E+Service+Check GmbH', // Company
-            null, // Department
-            null, // Name
-            'Große Ziegelohstraße 2', // Street
-            '06636', // PostalCode
-            'Laucha (Unstrut)', // City
-            null, // TelephoneNumber
-            null, // FaxNumber
-            null, // Email
-            'DE - Deutschland', // Country
-            null, // Supplier
-            '2021-09-13 14:46:04', // ArchiveDate
-            12,   // ArchiveInterval
-            '2021-09-13 12:46:04'  // Timestamp
-          ];
-          const stmt = db.prepare(sql);
-          stmt.bind(params); stmt.step(); stmt.free();
-          // RowID wird automatisch 1 (erste Zeile)
-        }
+  // 2) Startzeilen in tblCompany/tblCustomer
+  {
+    const sql1 = `
+      INSERT INTO tblCompany (
+        SecutestSerialNumber, KeyCode, RegistrationDate, CustomerNumber, Company, Department, Name, Street, PostalCode, City,
+        TelephoneNumber, FaxNumber, Email, Country, Supplier, ArchiveDate, ArchiveInterval, Timestamp
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    `;
+    const params1 = [null,null,'2021-09-13 14:46:04',null,'E+Service+Check GmbH',null,null,'Große Ziegelohstraße 2','06636','Laucha (Unstrut)',null,null,null,'DE - Deutschland',null,'2021-09-13 14:46:04',12,'2021-09-13 12:46:04'];
+    const stmt1 = db.prepare(sql1); stmt1.bind(params1); stmt1.step(); stmt1.free();
+  }
+  {
+    const sql2 = `
+      INSERT INTO tblCustomer (
+        CustomerNumber, Name, Contact, Street, ZIP, City, Country, Tel, Fax, Email, Remark, Timestamp, ArchiveDate, ArchiveInterval
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    `;
+    const params2 = ['666','Max Muster Corp','Max Muster','Musterstraße 3','666','Musterstadt','DE - Deutschland',null,null,null,null,now,now,12];
+    const stmt2 = db.prepare(sql2); stmt2.bind(params2); stmt2.step(); stmt2.free();
+  }
 
-        // tblCustomer – Zeile 1 (mit "Jetzt")
-        {
-          const sql = `
-            INSERT INTO tblCustomer (
-              CustomerNumber, Name, Contact, Street, ZIP, City, Country, Tel, Fax, Email, Remark, Timestamp, ArchiveDate, ArchiveInterval
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-          `;
-          const params = [
-            '666',
-            'Max Muster Corp',
-            'Max Muster',
-            'Musterstraße 3',
-            '666',
-            'Musterstadt',
-            'DE - Deutschland',
-            null, null, null, // Tel, Fax, Email
-            null,             // Remark
-            now,              // Timestamp (Jetzt)
-            now,              // ArchiveDate (Jetzt)
-            12                // ArchiveInterval
-          ];
-          const stmt = db.prepare(sql);
-          stmt.bind(params); stmt.step(); stmt.free();
-        }
-        // --- Initiale Seed-Daten (aus Original-DB) ---
-const sql = `
-INSERT INTO tblDeviceAbbreviations ("DeviceAbbreviation", "DeviceDescription", "Timestamp") VALUES 
-('BDA', 'Beleuchtungs-Daueranschluss', '2021-05-19 08:16:25'),
-('BPA', 'Beleuchtungs-Prüfanschluss', '2021-05-19 08:16:25'),
-('ESA', 'Einphasenanschluss', '2021-05-19 08:16:25'),
-('DSA', 'Dreiphasenanschluss', '2021-05-19 08:16:25'),
-('RPA', 'Röntgenprüfanschluss', '2021-05-19 08:16:25'),
-('CSA', 'Computersystemanschluss', '2021-05-19 08:16:25');
+  // 3) SEED-DATEN für die drei Tabellen AUSFÜHREN
+  const seedSQL = `
+  INSERT INTO tblDeviceAbbreviations ("DeviceAbbreviation","DeviceDescription","Timestamp") VALUES
+  ('BDA','Beleuchtungs-Daueranschluss','2021-05-19 08:16:25'),
+  ('BPA','Beleuchtungs-Prüfanschluss','2021-05-19 08:16:25'),
+  ('ESA','Einphasenanschluss','2021-05-19 08:16:25'),
+  ('DSA','Dreiphasenanschluss','2021-05-19 08:16:25'),
+  ('RPA','Röntgenprüfanschluss','2021-05-19 08:16:25'),
+  ('CSA','Computersystemanschluss','2021-05-19 08:16:25');
 
-INSERT INTO tblIDNumberCaptions ("Name", "Order", "NewOrder", "ColumnNo", "NewCaption", "Hide", "ProtocolNumber", "Mandatory", "Export", "TimeStamp") VALUES
-('Inventarnummer', 1, NULL, 1, 'Inventarnummer', 0, 1, 1, 1, '2021-05-19 08:16:25'),
-('Standort', 2, NULL, 2, 'Standort', 0, 1, 1, 1, '2021-05-19 08:16:25'),
-('Bezeichnung', 3, NULL, 3, 'Bezeichnung', 0, 1, 1, 1, '2021-05-19 08:16:25'),
-('Hersteller', 4, NULL, 4, 'Hersteller', 0, 1, 1, 1, '2021-05-19 08:16:25'),
-('Typ', 5, NULL, 5, 'Typ', 0, 1, 1, 1, '2021-05-19 08:16:25'),
-('Klasse', 6, NULL, 6, 'Klasse', 0, 1, 1, 1, '2021-05-19 08:16:25'),
-('Norm', 7, NULL, 7, 'Norm', 0, 1, 1, 1, '2021-05-19 08:16:25'),
-('Unter-Norm', 8, NULL, 8, 'Unter-Norm', 0, 1, 1, 1, '2021-05-19 08:16:25'),
-('Fabriknummer', 9, NULL, 9, 'Fabriknummer', 0, 1, 1, 1, '2021-05-19 08:16:25'),
-('Benutzer1', 10, NULL, 10, 'Benutzer1', 0, 1, 0, 1, '2021-05-19 08:16:25'),
-('Benutzer2', 11, NULL, 11, 'Benutzer2', 0, 1, 0, 1, '2021-05-19 08:16:25'),
-('Benutzer3', 12, NULL, 12, 'Benutzer3', 0, 1, 0, 1, '2021-05-19 08:16:25'),
-('Bemerkung', 13, NULL, 13, 'Bemerkung', 0, 1, 0, 1, '2021-05-19 08:16:25');
+  INSERT INTO tblIDNumberCaptions ("Name","Order","NewOrder","ColumnNo","NewCaption","Hide","ProtocolNumber","Mandatory","Export","TimeStamp") VALUES
+  ('Inventarnummer',1,NULL,1,'Inventarnummer',0,1,1,1,'2021-05-19 08:16:25'),
+  ('Standort',2,NULL,2,'Standort',0,1,1,1,'2021-05-19 08:16:25'),
+  ('Bezeichnung',3,NULL,3,'Bezeichnung',0,1,1,1,'2021-05-19 08:16:25'),
+  ('Hersteller',4,NULL,4,'Hersteller',0,1,1,1,'2021-05-19 08:16:25'),
+  ('Typ',5,NULL,5,'Typ',0,1,1,1,'2021-05-19 08:16:25'),
+  ('Klasse',6,NULL,6,'Klasse',0,1,1,1,'2021-05-19 08:16:25'),
+  ('Norm',7,NULL,7,'Norm',0,1,1,1,'2021-05-19 08:16:25'),
+  ('Unter-Norm',8,NULL,8,'Unter-Norm',0,1,1,1,'2021-05-19 08:16:25'),
+  ('Fabriknummer',9,NULL,9,'Fabriknummer',0,1,1,1,'2021-05-19 08:16:25'),
+  ('Benutzer1',10,NULL,10,'Benutzer1',0,1,0,1,'2021-05-19 08:16:25'),
+  ('Benutzer2',11,NULL,11,'Benutzer2',0,1,0,1,'2021-05-19 08:16:25'),
+  ('Benutzer3',12,NULL,12,'Benutzer3',0,1,0,1,'2021-05-19 08:16:25'),
+  ('Bemerkung',13,NULL,13,'Bemerkung',0,1,0,1,'2021-05-19 08:16:25');
 
-INSERT INTO tblMasterProcedureCopy ("FunctionNumber", "FunctionName", "Test", "StatusText", "Picture", "WorstCase", "TestTime", "Parameter1", "Parameter2", "Parameter3", "Parameter4", "Min", "Max", "First", "Expected", "Unit", "RangeMin", "RangeMax", "TypeParameter1", "TypeParameter2", "TypeParameter3", "TypeParameter4", "WorstCaseCondition", "Simulation", "WebServer") VALUES
-(1, 'Schutzleiter', 'PE-Test', 'Bestanden', NULL, 0, 1.5, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Ohm', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0),
-(2, 'Isolationswiderstand', 'Iso-Test', 'Bestanden', NULL, 0, 2.3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'MΩ', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0),
-(3, 'Ersatzableitstrom', 'EA-Test', 'Bestanden', NULL, 0, 2.9, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'mA', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0),
-(4, 'Funktionsprüfung', 'FP-Test', 'Bestanden', NULL, 0, 4.1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0);
-`;
+  INSERT INTO tblMasterProcedureCopy ("FunctionNumber","FunctionName","Test","StatusText","Picture","WorstCase","TestTime","Parameter1","Parameter2","Parameter3","Parameter4","Min","Max","First","Expected","Unit","RangeMin","RangeMax","TypeParameter1","TypeParameter2","TypeParameter3","TypeParameter4","WorstCaseCondition","Simulation","WebServer") VALUES
+  (1,'Schutzleiter','PE-Test','Bestanden',NULL,0,1.5,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'Ohm',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0),
+  (2,'Isolationswiderstand','Iso-Test','Bestanden',NULL,0,2.3,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'MΩ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0),
+  (3,'Ersatzableitstrom','EA-Test','Bestanden',NULL,0,2.9,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'mA',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0),
+  (4,'Funktionsprüfung','FP-Test','Bestanden',NULL,0,4.1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0);
+  `;
+  db.run(seedSQL); // <-- WICHTIG: wirklich ausführen!
+
+  // 4) Transaktion abschließen
+  db.run('COMMIT;');
 
 
-        db.run('COMMIT;');
 
         // Export
         const binaryArray = db.export(); // Uint8Array
