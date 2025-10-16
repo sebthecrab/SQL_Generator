@@ -438,8 +438,6 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
   // 4) Transaktion abschließen
   db.run('COMMIT;');
 
-
-
         // Export
         const binaryArray = db.export(); // Uint8Array
         const blob = new Blob([binaryArray], { type: 'application/octet-stream' });
@@ -447,7 +445,7 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
         // Download-Link aktivieren
         const url = URL.createObjectURL(blob);
         const ts = now.replace(/[: ]/g,'-'); // für Dateinamen
-        const filename = `export_${ts}.sqlite`;
+        const filename = `export_${ts}.sqlite3`;
         const a = $('#downloadLink');
         a.href = url;
         a.download = filename;
