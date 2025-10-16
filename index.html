@@ -3,9 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SQLite-Exporter (Schema + Seed + PDF) – V2.8</title>
-
-  <!-- Bootstrap -->
+  <title>SQLite-Exporter (Schema + Seed + PDF) – V2.9</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body{background:#f8fafc}
@@ -22,9 +20,9 @@
       <div class="col-12 col-lg-7">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h1 class="h4 mb-3">SQLite3 erstellen &amp; exportieren – V2.8 (mit PDF-Import)</h1>
+            <h1 class="h4 mb-3">SQLite3 erstellen &amp; exportieren – V2.9 (mit PDF-Import)</h1>
             <p class="text-muted mb-4">
-              Läuft komplett lokal im Browser: <span class="mono">sql.js</span> für SQLite, <span class="mono">pdf.js</span> für PDF.
+              Läuft komplett lokal im Browser: <span class="mono">sql.js</span> (SQLite) &amp; <span class="mono">pdf.js</span> (PDF).
             </p>
 
             <!-- PDF Upload -->
@@ -32,15 +30,15 @@
               <label class="form-label">PDF mit Kundendaten</label>
               <input id="pdfInput" type="file" class="form-control" accept="application/pdf">
               <div class="form-text">
-                Es werden Kundennummer, Firma, Ansprechpartner, Straße, PLZ, Ort aus der <strong>Hauptanschrift</strong> übernommen.
-                <em>Komma-getrennte Adressen</em> gelten als Prüfobjekte und werden ignoriert.
+                Es werden Kundennummer, Firma, Ansprechpartner, Straße, PLZ, Ort aus der <strong>Hauptanschrift (einzeilig, ohne Komma)</strong> übernommen.
+                Lieferantenadresse (E+Service+Check, Laucha) wird explizit ignoriert.
               </div>
             </div>
 
             <!-- Vorschau erkannter Werte -->
             <div class="mb-3" id="pdfPreviewWrap" style="display:none;">
               <div class="alert alert-info mb-2">
-                <strong>Erkannte PDF-Daten</strong> – diese Werte werden beim Export automatisch verwendet.
+                <strong>Erkannte PDF-Daten (Kunde)</strong> – werden beim Export verwendet.
               </div>
               <dl class="kv small-mono">
                 <dt>CustomerNumber</dt><dd id="pvCustomerNumber">–</dd>
@@ -71,9 +69,9 @@
             <details>
               <summary class="mb-2"><strong>Inhalt &amp; Seed-Daten (Kurzfassung)</strong></summary>
               <ul class="small">
-                <li><span class="mono">tblCustomer</span> – aus PDF befüllt (Fallbacks möglich)</li>
-                <li><span class="mono">tblDeviceAbbreviations</span>, <span class="mono">tblIDNumberCaptions</span>, <span class="mono">tblMasterProcedureCopy</span> – werden befüllt</li>
-                <li>Alles in 1 Transaktion, lokal im Browser</li>
+                <li><span class="mono">tblCustomer</span> – aus PDF befüllt (nur Hauptanschrift; Komma-Zeilen=Prüfobjekt werden ignoriert)</li>
+                <li><span class="mono">tblDeviceAbbreviations</span>, <span class="mono">tblIDNumberCaptions</span>, <span class="mono">tblMasterProcedureCopy</span> – Seed</li>
+                <li><span class="mono">tblCompany</span> – feste E+Service+Check (Laucha) als Lieferant</li>
               </ul>
             </details>
           </div>
@@ -91,346 +89,136 @@
     </div>
   </main>
 
-  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- sql.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
-  <!-- pdf.js (UMD) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     const $ = sel => document.querySelector(sel);
     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-    // Zeitformat: JJJJ-MM-DD HH:MM:SS (Europe/Berlin)
-    function nowBerlin() {
-      try {
-        const tz = 'Europe/Berlin';
-        const d = new Date();
-        const parts = new Intl.DateTimeFormat('de-DE', {
-          timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit',
-          hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
-        }).formatToParts(d).reduce((a,p)=>{a[p.type]=p.value;return a;}, {});
-        return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
-      } catch {
-        const pad = n => String(n).padStart(2,'0');
-        const d = new Date();
+    // Zeit
+    function nowBerlin(){
+      try{
+        const d=new Date(), tz='Europe/Berlin';
+        const p=new Intl.DateTimeFormat('de-DE',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})
+          .formatToParts(d).reduce((a,p)=>{a[p.type]=p.value;return a;},{});
+        return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`;
+      }catch{
+        const pad=n=>String(n).padStart(2,'0'); const d=new Date();
         return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
       }
     }
-    function showAlert(html, type='info'){
-      $('#alertBox').innerHTML = `<div class="alert alert-${type} mb-0" role="alert">${html}</div>`;
-    }
+    function showAlert(html, type='info'){ $('#alertBox').innerHTML=`<div class="alert alert-${type} mb-0" role="alert">${html}</div>`; }
     function updateNowPreview(){ $('#nowPreview').value = nowBerlin(); }
     updateNowPreview(); setInterval(updateNowPreview, 1000);
 
-    // ---------- Schema ----------
+    // Schema
     const schemaSQL = `
 CREATE TABLE IF NOT EXISTS android_metadata ( locale TEXT );
-
 CREATE TABLE IF NOT EXISTS tblCompany (
-  SecutestSerialNumber TEXT,
-  KeyCode              TEXT,
-  RegistrationDate     TEXT NOT NULL,
-  CustomerNumber       TEXT,
-  Company              TEXT NOT NULL,
-  Department           TEXT,
-  Name                 TEXT,
-  Street               TEXT NOT NULL,
-  PostalCode           TEXT NOT NULL,
-  City                 TEXT NOT NULL,
-  TelephoneNumber      TEXT,
-  FaxNumber            TEXT,
-  Email                TEXT,
-  Country              TEXT NOT NULL,
-  Supplier             TEXT,
-  ArchiveDate          TEXT NOT NULL,
-  ArchiveInterval      INTEGER NOT NULL,
-  Timestamp            TEXT NOT NULL
+  SecutestSerialNumber TEXT, KeyCode TEXT, RegistrationDate TEXT NOT NULL, CustomerNumber TEXT,
+  Company TEXT NOT NULL, Department TEXT, Name TEXT, Street TEXT NOT NULL, PostalCode TEXT NOT NULL, City TEXT NOT NULL,
+  TelephoneNumber TEXT, FaxNumber TEXT, Email TEXT, Country TEXT NOT NULL, Supplier TEXT,
+  ArchiveDate TEXT NOT NULL, ArchiveInterval INTEGER NOT NULL, Timestamp TEXT NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS tblCustomer (
-  "CustomerNumber"  INTEGER NOT NULL,
-  "Name"            TEXT NOT NULL,
-  "Contact"         TEXT NOT NULL,
-  "Street"          TEXT NOT NULL,
-  "ZIP"             TEXT NOT NULL,
-  "City"            TEXT NOT NULL,
-  "Country"         TEXT NOT NULL,
-  "Tel"             TEXT,
-  "Fax"             TEXT,
-  "Email"           TEXT,
-  "Remark"          TEXT,
-  "Timestamp"       TEXT NOT NULL,
-  "ArchiveDate"     TEXT NOT NULL,
-  "ArchiveInterval" INTEGER NOT NULL
+  "CustomerNumber" INTEGER NOT NULL, "Name" TEXT NOT NULL, "Contact" TEXT NOT NULL,
+  "Street" TEXT NOT NULL, "ZIP" TEXT NOT NULL, "City" TEXT NOT NULL, "Country" TEXT NOT NULL,
+  "Tel" TEXT, "Fax" TEXT, "Email" TEXT, "Remark" TEXT, "Timestamp" TEXT NOT NULL, "ArchiveDate" TEXT NOT NULL, "ArchiveInterval" INTEGER NOT NULL
 );
-
-CREATE TABLE IF NOT EXISTS tblDeviceAbbreviations (
-  "DeviceAbbreviation" TEXT NOT NULL,
-  "DeviceDescription"  TEXT NOT NULL,
-  "Timestamp"          TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS tblIDNumberCaptions (
-  "Name"           TEXT NOT NULL,
-  "Order"          INTEGER NOT NULL,
-  "NewOrder"       TEXT,
-  "ColumnNo"       INTEGER NOT NULL,
-  "NewCaption"     TEXT NOT NULL,
-  "Hide"           INTEGER NOT NULL,
-  "ProtocolNumber" INTEGER NOT NULL,
-  "Mandatory"      INTEGER NOT NULL,
-  "Export"         INTEGER NOT NULL,
-  "TimeStamp"      TEXT NOT NULL
-);
-
+CREATE TABLE IF NOT EXISTS tblDeviceAbbreviations ("DeviceAbbreviation" TEXT NOT NULL,"DeviceDescription" TEXT NOT NULL,"Timestamp" TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS tblIDNumberCaptions ("Name" TEXT NOT NULL,"Order" INTEGER NOT NULL,"NewOrder" TEXT,"ColumnNo" INTEGER NOT NULL,"NewCaption" TEXT NOT NULL,"Hide" INTEGER NOT NULL,"ProtocolNumber" INTEGER NOT NULL,"Mandatory" INTEGER NOT NULL,"Export" INTEGER NOT NULL,"TimeStamp" TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS tblIDNumbers (
-  "ProcedureName"     TEXT NOT NULL,
-  "CustomerNumber"    INTEGER NOT NULL,
-  "IDNumber"          INTEGER NOT NULL,
-  "Location"          TEXT NOT NULL,
-  "DeviceDescription" TEXT NOT NULL,
-  "Manufacturer"      TEXT NOT NULL,
-  "Type"              TEXT NOT NULL,
-  "Class"             TEXT NOT NULL,
-  "Standard"          TEXT NOT NULL,
-  "SubStandard"       TEXT NOT NULL,
-  "FactoryNumber"     TEXT NOT NULL,
-  "User1"             TEXT NOT NULL,
-  "User2"             TEXT NOT NULL,
-  "User3"             INTEGER NOT NULL,
-  "Remark"            TEXT NOT NULL,
-  "TestInterval"      INTEGER NOT NULL,
-  "ProtocolForm"      TEXT NOT NULL,
-  "CableLength"       TEXT NOT NULL,
-  "CableCrossection"  TEXT NOT NULL,
-  "HeatingPower"      TEXT NOT NULL,
-  "Power"             TEXT NOT NULL,
-  "OCVoltage"         TEXT NOT NULL,
-  "AppliedParts"      TEXT NOT NULL,
-  "RCDType"           TEXT NOT NULL,
-  "RCDIDN"            TEXT NOT NULL,
-  "IsolatedParts"     TEXT NOT NULL,
-  "PEParts"           TEXT NOT NULL,
-  "PETest"            TEXT NOT NULL,
-  "InsulationTest"    TEXT NOT NULL,
-  "CurrentClamp"      TEXT NOT NULL,
-  "PRCDS"             TEXT NOT NULL,
-  "ELV"               TEXT NOT NULL,
-  "ELVTest"           TEXT NOT NULL,
-  "SurgeArrestor"     TEXT NOT NULL,
-  "Wiring"            TEXT NOT NULL,
-  "Pictures"          TEXT NOT NULL,
-  "LastTest"          TEXT NOT NULL,
-  "TestResult"        TEXT NOT NULL,
-  "NextTest"          TEXT NOT NULL,
-  "Hyperlink"         TEXT NOT NULL,
-  "Status"            INTEGER NOT NULL,
-  "Remark2"           TEXT NOT NULL,
-  "TestNumber"        INTEGER NOT NULL,
-  "Timestamp"         TEXT NOT NULL
+  "ProcedureName" TEXT NOT NULL,"CustomerNumber" INTEGER NOT NULL,"IDNumber" INTEGER NOT NULL,"Location" TEXT NOT NULL,"DeviceDescription" TEXT NOT NULL,
+  "Manufacturer" TEXT NOT NULL,"Type" TEXT NOT NULL,"Class" TEXT NOT NULL,"Standard" TEXT NOT NULL,"SubStandard" TEXT NOT NULL,"FactoryNumber" TEXT NOT NULL,
+  "User1" TEXT NOT NULL,"User2" TEXT NOT NULL,"User3" INTEGER NOT NULL,"Remark" TEXT NOT NULL,"TestInterval" INTEGER NOT NULL,"ProtocolForm" TEXT NOT NULL,
+  "CableLength" TEXT NOT NULL,"CableCrossection" TEXT NOT NULL,"HeatingPower" TEXT NOT NULL,"Power" TEXT NOT NULL,"OCVoltage" TEXT NOT NULL,"AppliedParts" TEXT NOT NULL,
+  "RCDType" TEXT NOT NULL,"RCDIDN" TEXT NOT NULL,"IsolatedParts" TEXT NOT NULL,"PEParts" TEXT NOT NULL,"PETest" TEXT NOT NULL,"InsulationTest" TEXT NOT NULL,
+  "CurrentClamp" TEXT NOT NULL,"PRCDS" TEXT NOT NULL,"ELV" TEXT NOT NULL,"ELVTest" TEXT NOT NULL,"SurgeArrestor" TEXT NOT NULL,"Wiring" TEXT NOT NULL,
+  "Pictures" TEXT NOT NULL,"LastTest" TEXT NOT NULL,"TestResult" TEXT NOT NULL,"NextTest" TEXT NOT NULL,"Hyperlink" TEXT NOT NULL,"Status" INTEGER NOT NULL,
+  "Remark2" TEXT NOT NULL,"TestNumber" INTEGER NOT NULL,"Timestamp" TEXT NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS tblMasterProcedureCopy (
-  "FunctionNumber"     INTEGER NOT NULL,
-  "FunctionName"       TEXT NOT NULL,
-  "Test"               TEXT NOT NULL,
-  "StatusText"         TEXT NOT NULL,
-  "Picture"            TEXT,
-  "WorstCase"          INTEGER NOT NULL,
-  "TestTime"           REAL NOT NULL,
-  "Parameter1"         TEXT,
-  "Parameter2"         TEXT,
-  "Parameter3"         TEXT,
-  "Parameter4"         TEXT,
-  "Min"                TEXT,
-  "Max"                TEXT,
-  "First"              TEXT,
-  "Expected"           TEXT,
-  "Unit"               TEXT,
-  "RangeMin"           INTEGER,
-  "RangeMax"           TEXT,
-  "TypeParameter1"     TEXT,
-  "TypeParameter2"     TEXT,
-  "TypeParameter3"     TEXT,
-  "TypeParameter4"     TEXT,
-  "WorstCaseCondition" TEXT,
-  "Simulation"         TEXT,
-  "WebServer"          INTEGER NOT NULL
+  "FunctionNumber" INTEGER NOT NULL,"FunctionName" TEXT NOT NULL,"Test" TEXT NOT NULL,"StatusText" TEXT NOT NULL,"Picture" TEXT,
+  "WorstCase" INTEGER NOT NULL,"TestTime" REAL NOT NULL,"Parameter1" TEXT,"Parameter2" TEXT,"Parameter3" TEXT,"Parameter4" TEXT,
+  "Min" TEXT,"Max" TEXT,"First" TEXT,"Expected" TEXT,"Unit" TEXT,"RangeMin" INTEGER,"RangeMax" TEXT,
+  "TypeParameter1" TEXT,"TypeParameter2" TEXT,"TypeParameter3" TEXT,"TypeParameter4" TEXT,"WorstCaseCondition" TEXT,"Simulation" TEXT,"WebServer" INTEGER NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS tblResults (
-  "ProcedureName"        TEXT NOT NULL,
-  "CustomerNumber"       INTEGER NOT NULL,
-  "IDNumber"             INTEGER NOT NULL,
-  "TestNumber"           INTEGER NOT NULL,
-  "ResultNumber"         INTEGER NOT NULL,
-  "ProcedureStepNumber"  TEXT NOT NULL,
-  "FunctionName"         TEXT NOT NULL,
-  "Picture"              TEXT NOT NULL,
-  "Remark"               TEXT NOT NULL,
-  "Protocol"             INTEGER NOT NULL,
-  "WorstCase"            TEXT NOT NULL,
-  "TestTime"             REAL NOT NULL,
-  "Parameter1"           TEXT NOT NULL,
-  "Parameter2"           TEXT NOT NULL,
-  "Parameter3"           TEXT NOT NULL,
-  "Parameter4"           TEXT NOT NULL,
-  "Min"                  TEXT NOT NULL,
-  "Max"                  TEXT NOT NULL,
-  "First"                TEXT NOT NULL,
-  "Expected"             TEXT NOT NULL,
-  "Result"               TEXT NOT NULL,
-  "OK"                   TEXT NOT NULL
+  "ProcedureName" TEXT NOT NULL,"CustomerNumber" INTEGER NOT NULL,"IDNumber" INTEGER NOT NULL,"TestNumber" INTEGER NOT NULL,"ResultNumber" INTEGER NOT NULL,
+  "ProcedureStepNumber" TEXT NOT NULL,"FunctionName" TEXT NOT NULL,"Picture" TEXT NOT NULL,"Remark" TEXT NOT NULL,"Protocol" INTEGER NOT NULL,
+  "WorstCase" TEXT NOT NULL,"TestTime" REAL NOT NULL,"Parameter1" TEXT NOT NULL,"Parameter2" TEXT NOT NULL,"Parameter3" TEXT NOT NULL,"Parameter4" TEXT NOT NULL,
+  "Min" TEXT NOT NULL,"Max" TEXT NOT NULL,"First" TEXT NOT NULL,"Expected" TEXT NOT NULL,"Result" TEXT NOT NULL,"OK" TEXT NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS tblResultsHeader (
-  "ProcedureName"          TEXT NOT NULL,
-  "CustomerNumber"         INTEGER NOT NULL,
-  "IDNumber"               INTEGER NOT NULL,
-  "TestNumber"             INTEGER NOT NULL,
-  "OrderNumber"            TEXT NOT NULL,
-  "Remark"                 TEXT NOT NULL,
-  "TestDate"               TEXT NOT NULL,
-  "TestResult"             TEXT NOT NULL,
-  "TestingPerson"          TEXT NOT NULL,
-  "Pictures"               TEXT NOT NULL,
-  "SecutestIDString"       TEXT NOT NULL,
-  "SoftwareVersion"        TEXT NOT NULL,
-  "SecutestSoftwareVersion" TEXT NOT NULL,
-  "TesterSerialNumber"     TEXT NOT NULL,
-  "LineVoltage"            TEXT NOT NULL,
-  "Protocol"               TEXT NOT NULL,
-  "Timestamp"              TEXT NOT NULL
+  "ProcedureName" TEXT NOT NULL,"CustomerNumber" INTEGER NOT NULL,"IDNumber" INTEGER NOT NULL,"TestNumber" INTEGER NOT NULL,"OrderNumber" TEXT NOT NULL,
+  "Remark" TEXT NOT NULL,"TestDate" TEXT NOT NULL,"TestResult" TEXT NOT NULL,"TestingPerson" TEXT NOT NULL,"Pictures" TEXT NOT NULL,
+  "SecutestIDString" TEXT NOT NULL,"SoftwareVersion" TEXT NOT NULL,"SecutestSoftwareVersion" TEXT NOT NULL,"TesterSerialNumber" TEXT NOT NULL,
+  "LineVoltage" TEXT NOT NULL,"Protocol" TEXT NOT NULL,"Timestamp" TEXT NOT NULL
 );
-
-CREATE TABLE IF NOT EXISTS tblSecutestRegistration (
-  "SecutestSerialNumber" TEXT,
-  "KeyCode"              TEXT,
-  "RegistrationDate"     TEXT,
-  "CustomerNumber"       TEXT,
-  "Company"              TEXT,
-  "Department"           TEXT,
-  "Name"                 TEXT,
-  "Street"               TEXT,
-  "PostalCode"           TEXT,
-  "City"                 TEXT,
-  "TelephoneNumber"      TEXT,
-  "FaxNumber"            TEXT,
-  "Email"                TEXT,
-  "Country"              TEXT,
-  "Supplier"             TEXT,
-  "Timestamp"            TEXT
-);
-
-CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingHeader (
-  "ProcedureName"  TEXT,
-  "CustomerNumber" TEXT,
-  "IDNumber"       TEXT,
-  "TestNumber"     TEXT,
-  "ResultNumber"   TEXT,
-  "TestDetail1"    TEXT,
-  "TestResult1"    TEXT,
-  "TestDetail2"    TEXT,
-  "TestResult2"    TEXT,
-  "TestDetail3"    TEXT,
-  "TestResult3"    TEXT,
-  "TestDetail4"    TEXT,
-  "TestResult4"    TEXT,
-  "TestDetail5"    TEXT,
-  "TestResult5"    TEXT,
-  "TestDetail6"    TEXT,
-  "TestResult6"    TEXT,
-  "TestDetail7"    TEXT,
-  "TestResult7"    TEXT,
-  "TestDetail8"    TEXT,
-  "TestResult8"    TEXT
-);
-
-CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
-  "ProcedureName"     TEXT,
-  "CustomerNumber"    TEXT,
-  "IDNumber"          TEXT,
-  "TestNumber"        TEXT,
-  "ResultNumber"      TEXT,
-  "VisTestNumber"     TEXT,
-  "InspectionNumber"  TEXT,
-  "InspectionResult"  TEXT
-);
+CREATE TABLE IF NOT EXISTS tblSecutestRegistration ("SecutestSerialNumber" TEXT,"KeyCode" TEXT,"RegistrationDate" TEXT,"CustomerNumber" TEXT,"Company" TEXT,"Department" TEXT,"Name" TEXT,"Street" TEXT,"PostalCode" TEXT,"City" TEXT,"TelephoneNumber" TEXT,"FaxNumber" TEXT,"Email" TEXT,"Country" TEXT,"Supplier" TEXT,"Timestamp" TEXT);
+CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingHeader ("ProcedureName" TEXT,"CustomerNumber" TEXT,"IDNumber" TEXT,"TestNumber" TEXT,"ResultNumber" TEXT,"TestDetail1" TEXT,"TestResult1" TEXT,"TestDetail2" TEXT,"TestResult2" TEXT,"TestDetail3" TEXT,"TestResult3" TEXT,"TestDetail4" TEXT,"TestResult4" TEXT,"TestDetail5" TEXT,"TestResult5" TEXT,"TestDetail6" TEXT,"TestResult6" TEXT,"TestDetail7" TEXT,"TestResult7" TEXT,"TestDetail8" TEXT,"TestResult8" TEXT);
+CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,"CustomerNumber" TEXT,"IDNumber" TEXT,"TestNumber" TEXT,"ResultNumber" TEXT,"VisTestNumber" TEXT,"InspectionNumber" TEXT,"InspectionResult" TEXT);
 `.trim();
     $('#schemaPreview').textContent = schemaSQL;
 
-    // ---------- sql.js init ----------
+    // sql.js init
     let SQL;
     (async function initSql(){
-      SQL = await initSqlJs({
-        locateFile: file => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/' + file
-      });
+      SQL = await initSqlJs({ locateFile: f => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/' + f });
     })();
 
-    // ---------- PDF -> lines -> Felder ----------
-    const parsed = {
-      CustomerNumber: null,
-      Name: null,
-      Contact: null,
-      Street: null,
-      ZIP: null,
-      City: null,
-      Country: 'DE - Deutschland'
-    };
+    // -------- PDF -> lines -> Kunde (Vendor explicit raus) --------
+    const parsed = { CustomerNumber:null, Name:null, Contact:null, Street:null, ZIP:null, City:null, Country:'DE - Deutschland' };
 
-    // Hilfsfunktionen
+    // Vendor-Patterns und -Zeilen
+    const vendorMatchers = [
+      /E\+?Service\+?Check/i,
+      /Große?\s+Ziegelohstraße/i,
+      /\b06636\b/i,
+      /\bLaucha\b/i,
+      /\(Unstrut\)/i
+    ];
+    function isVendorLine(line){ return vendorMatchers.some(rx => rx.test(line)); }
+
+    // Helper
     const isStreet = s => {
-      if (!s) return false;
-      if (s.includes(',')) return false; // Prüfobjekt überspringen
-      const re = /(?:straße|str\.?)\s*\d+[a-zA-Z]?$/i;
-      const re2 = /(?:allee|weg|platz|gasse)\s*\d+[a-zA-Z]?$/i;
-      return re.test(s) || re2.test(s);
+      if (!s || s.includes(',')) return false;
+      return /(?:straße|str\.?|allee|weg|platz|gasse)\s*\d+[a-zA-Z]?$/i.test(s);
     };
     const isZipCity = s => {
-      if (!s) return false;
-      if (s.includes(',')) return false;
-      const m = s.match(/\b(\d{5})\b\s+([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-\(\) ]+)$/);
-      return !!m;
+      if (!s || s.includes(',')) return false;
+      return /\b\d{5}\b\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-\(\) ]+$/.test(s);
     };
     const extractZipCity = s => {
       const m = s.match(/\b(\d{5})\b\s+([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-\(\) ]+)$/);
-      return m ? {zip: m[1], city: m[2].trim()} : null;
+      return m ? {zip:m[1], city:m[2].trim()} : null;
     };
-    const isLikelyOrg = s => /\b(Universität|Hochschule|GmbH|AG|Stiftung|Klinikum|Stadt|Behörde|Amt)\b/i.test(s);
+    const isLikelyOrg = s => /\b(Universität|Hochschule|GmbH|AG|Stiftung|Klinikum|Stadt|Amt|Behörde)\b/i.test(s);
 
     async function pdfToLines(file){
       const ab = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({data: ab}).promise;
-      const all = [];
-      for (let p=1; p<=pdf.numPages; p++){
+      const all=[];
+      for(let p=1;p<=pdf.numPages;p++){
         const page = await pdf.getPage(p);
         const tc = await page.getTextContent();
-        // Gruppiere nach Y (Linien) – y auf ganze Zahl runden:
         const linesMap = new Map();
         tc.items.forEach(it=>{
-          const str = ('str' in it) ? it.str : '';
-          const tr = it.transform || it?.fontMatrix || [1,0,0,1,0,0];
-          // y ist tr[5] (bei pdf.js häufig 5), x ist tr[4]; fallback b
-          const y = Math.round(tr[5] || 0);
-          const x = tr[4] || 0;
-          if (!linesMap.has(y)) linesMap.set(y, []);
-          linesMap.get(y).push({x, str});
+          const str = ('str' in it)? it.str : '';
+          const tr = it.transform || [1,0,0,1,0,0];
+          const y = Math.round(tr[5]||0), x = tr[4]||0;
+          if(!linesMap.has(y)) linesMap.set(y,[]);
+          linesMap.get(y).push({x,str});
         });
-        const ys = Array.from(linesMap.keys()).sort((a,b)=>a-b);
+        const ys = [...linesMap.keys()].sort((a,b)=>a-b);
         ys.forEach(y=>{
-          const items = linesMap.get(y).sort((a,b)=>a.x-b.x);
-          const lineText = items.map(i=>i.str).join(' ').replace(/\s+/g,' ').trim();
-          if (lineText) all.push(lineText);
+          const line = linesMap.get(y).sort((a,b)=>a.x-b.x).map(i=>i.str).join(' ').replace(/\s+/g,' ').trim();
+          if(line) all.push(line);
         });
       }
-      // Duplikate und Leerzeilen filtern
-      const uniq = [];
-      for (const l of all){
-        if (!l) continue;
-        if (!uniq.includes(l)) uniq.push(l);
-      }
-      return uniq;
+      // de-dupe
+      return [...new Set(all)];
     }
 
     $('#pdfInput').addEventListener('change', async (e) => {
@@ -439,61 +227,76 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
       try{
         const lines = await pdfToLines(file);
 
-        // 1) Kundennummer
-        let cust = null;
-        for (const l of lines){
-          const m = l.match(/Kunden?(nummer|nr\.?|nr)\s*[:\-]?\s*([0-9]{4,})/i);
-          if (m){ cust = m[2]; break; }
+        // Vendor-Bereich lokalisieren (Index der Vendor-Zeilen + Puffer)
+        const vendorIdx = new Set();
+        lines.forEach((l, i) => {
+          if (isVendorLine(l)) {
+            for (let k = Math.max(0,i-2); k <= Math.min(lines.length-1,i+2); k++) vendorIdx.add(k);
+          }
+        });
+
+        const notVendor = (i) => !vendorIdx.has(i) && !isVendorLine(lines[i]);
+
+        // 1) Kundennummer (aus "Kundennummer|Kunden-Nr.|Kundennr."), bevorzugt nicht-Vendor
+        let cust=null;
+        for(let i=0;i<lines.length;i++){
+          if(!notVendor(i)) continue;
+          const m = lines[i].match(/Kunden?(nummer|nr\.?|nr)\s*[:\-]?\s*([0-9]{4,})/i);
+          if(m){ cust = m[2]; break; }
         }
         parsed.CustomerNumber = cust ?? parsed.CustomerNumber;
 
-        // 2) Straße (einzeilig, ohne Komma)
-        let streetIdx = -1;
-        for (let i=0;i<lines.length;i++){
-          if (isStreet(lines[i])) { streetIdx = i; break; }
+        // 2) Straße (einzeilig, ohne Komma), nicht im Vendor-Bereich
+        let streetIdx=-1;
+        for(let i=0;i<lines.length;i++){
+          if(!notVendor(i)) continue;
+          if(isStreet(lines[i])){ streetIdx=i; break; }
         }
-        if (streetIdx >= 0) parsed.Street = lines[streetIdx];
+        if(streetIdx>=0) parsed.Street = lines[streetIdx];
 
-        // 3) PLZ + Ort (einzeilig, ohne Komma)
-        let zcIdx = -1, zc = null;
-        for (let i=streetIdx+1;i<Math.min(lines.length, streetIdx+6); i++){
-          if (isZipCity(lines[i])) { zcIdx = i; zc = extractZipCity(lines[i]); break; }
-        }
-        if (!zc){ // Fallback: überall suchen
-          for (let i=0;i<lines.length;i++){
-            if (isZipCity(lines[i])) { zcIdx = i; zc = extractZipCity(lines[i]); break; }
+        // 3) PLZ + Ort, bevorzugt direkt nach Straße (nächste 5 Zeilen), nicht Vendor
+        let zc=null, zcIdx=-1;
+        if(streetIdx>=0){
+          for(let i=streetIdx+1; i<Math.min(lines.length, streetIdx+6); i++){
+            if(!notVendor(i)) continue;
+            if(isZipCity(lines[i])){ zcIdx=i; zc=extractZipCity(lines[i]); break; }
           }
         }
-        if (zc){ parsed.ZIP = zc.zip; parsed.City = zc.city; }
+        if(!zc){ // globaler Fallback (aber nicht Vendor)
+          for(let i=0;i<lines.length;i++){
+            if(!notVendor(i)) continue;
+            if(isZipCity(lines[i])){ zcIdx=i; zc=extractZipCity(lines[i]); break; }
+          }
+        }
+        if(zc){ parsed.ZIP = zc.zip; parsed.City = zc.city; }
 
-        // 4) Ansprechpartner
-        let contact = null;
-        for (const l of lines){
-          const m = l.match(/\b(Herr|Frau)\s+[A-ZÄÖÜ][\wÄÖÜäöüß\-]+(?:\s+[A-ZÄÖÜ][\wÄÖÜäöüß\-]+)?/);
-          if (m){ contact = m[0]; break; }
+        // 4) Ansprechpartner – nicht aus Vendor-Bereich
+        let contact=null;
+        for(let i=0;i<lines.length;i++){
+          if(!notVendor(i)) continue;
+          const m = lines[i].match(/\b(Herr|Frau)\s+[A-ZÄÖÜ][\wÄÖÜäöüß\-]+(?:\s+[A-ZÄÖÜ][\wÄÖÜäöüß\-]+)?/);
+          if(m){ contact = m[0]; break; }
         }
         parsed.Contact = contact ?? parsed.Contact;
 
-        // 5) Firmenname – aus Umgebung der Straße, ohne Komma-Zeilen
-        let name = null;
-        if (streetIdx >= 0){
-          for (let i = Math.max(0, streetIdx - 3); i < streetIdx; i++){
+        // 5) Firmenname – Zeilen vor der Straße (max. 3), keine Kommas, nicht Vendor
+        let name=null;
+        if(streetIdx>=0){
+          for(let i=Math.max(0,streetIdx-3); i<streetIdx; i++){
+            if(!notVendor(i)) continue;
             const l = lines[i];
-            if (!l || l.includes(',')) continue; // keine Prüfobjekte
-            if (isLikelyOrg(l)) { name = l; break; }
+            if(l.includes(',')) continue; // Prüfobjekt ignorieren
+            if(isLikelyOrg(l)) { name=l; break; }
           }
         }
-        // Fallback: erste Zeile, die nach Organisation klingt
-        if (!name){
-          for (const l of lines){
-            if (!l || l.includes(',')) continue;
-            if (isLikelyOrg(l)) { name = l; break; }
+        // Fallback: erste nicht-Vendor-Zeile, die nach Organisation klingt
+        if(!name){
+          for(let i=0;i<lines.length;i++){
+            if(!notVendor(i)) continue;
+            const l=lines[i];
+            if(l.includes(',')) continue;
+            if(isLikelyOrg(l)) { name=l; break; }
           }
-        }
-        // Harte Ausnahme, falls explizit in der PDF
-        if (!name){
-          const t = lines.join('\n');
-          if (/Technische Universität München/i.test(t)) name = 'Technische Universität München';
         }
         parsed.Name = name ?? parsed.Name;
 
@@ -508,30 +311,27 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
         $('#pvZIP').textContent           = parsed.ZIP ?? '–';
         $('#pvCity').textContent          = parsed.City ?? '–';
         $('#pvCountry').textContent       = parsed.Country ?? 'DE - Deutschland';
-        $('#pdfPreviewWrap').style.display = 'block';
+        $('#pdfPreviewWrap').style.display='block';
 
-        showAlert('PDF gelesen. Hauptanschrift (einzeilig) übernommen – Komma-Zeilen wurden ignoriert.', 'success');
-      } catch(err){
+        showAlert('PDF gelesen. Lieferantenadresse ignoriert; Hauptanschrift des Kunden übernommen.', 'success');
+      }catch(err){
         console.error(err);
         showAlert('PDF konnte nicht verlässlich gelesen werden. Bitte andere Datei probieren.', 'danger');
       }
     });
 
-    // ---------- DB bauen & exportieren ----------
+    // DB bauen & exportieren
     let SQLDB;
-
     async function buildAndExport(){
       if(!SQL){ showAlert('SQL-Engine lädt noch. Bitte erneut versuchen …','warning'); return; }
-
       const now = nowBerlin();
       const db = new SQL.Database();
       SQLDB = db;
-
       try{
         db.run('BEGIN;');
         db.run(schemaSQL);
 
-        // Beispiel tblCompany (unverändert)
+        // tblCompany = Lieferant (fest)
         {
           const sql = `
             INSERT INTO tblCompany (
@@ -539,11 +339,13 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
               TelephoneNumber, FaxNumber, Email, Country, Supplier, ArchiveDate, ArchiveInterval, Timestamp
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
           `;
-          const params = [null, null, '2021-09-13 14:46:04', null, 'E+Service+Check GmbH', null, null, 'Große Ziegelohstraße 2', '06636', 'Laucha (Unstrut)', null, null, null, 'DE - Deutschland', null, '2021-09-13 14:46:04', 12, '2021-09-13 12:46:04'];
+          const params = [null, null, '2021-09-13 14:46:04', null,
+            'E+Service+Check GmbH', null, null, 'Große Ziegelohstraße 2', '06636', 'Laucha (Unstrut)',
+            null, null, null, 'DE - Deutschland', null, '2021-09-13 14:46:04', 12, '2021-09-13 12:46:04'];
           const stmt = db.prepare(sql); stmt.bind(params); stmt.step(); stmt.free();
         }
 
-        // tblCustomer – PDF-Werte mit Fallbacks
+        // tblCustomer = Kunde (aus PDF)
         const cust = {
           CustomerNumber: parsed.CustomerNumber ?? '20264',
           Name:           parsed.Name ?? 'Technische Universität München',
@@ -560,20 +362,13 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
           `;
           const params2 = [
-            String(cust.CustomerNumber),
-            cust.Name,
-            cust.Contact,
-            cust.Street,
-            cust.ZIP,
-            cust.City,
-            cust.Country,
-            '', '', '', '',
-            now, now, 12
+            String(cust.CustomerNumber), cust.Name, cust.Contact, cust.Street,
+            cust.ZIP, cust.City, cust.Country, '', '', '', '', now, now, 12
           ];
           const stmt = db.prepare(sql); stmt.bind(params2); stmt.step(); stmt.free();
         }
 
-        // Seed-Daten
+        // Seeds
         const seedSQL = `
 INSERT INTO tblDeviceAbbreviations ("DeviceAbbreviation","DeviceDescription","Timestamp") VALUES
 ('BDA','Beleuchtungs-Daueranschluss','2021-05-19 08:16:25'),
@@ -617,7 +412,7 @@ INSERT INTO tblMasterProcedureCopy ("FunctionNumber","FunctionName","Test","Stat
         const a = $('#downloadLink');
         a.href = url; a.download = filename; a.classList.remove('disabled');
         showAlert(`Fertig! <strong>${filename}</strong> ist bereit zum Download.`, 'success');
-      } catch(e){
+      }catch(e){
         try{ SQLDB && SQLDB.run('ROLLBACK;'); }catch(_){}
         console.error(e);
         showAlert(`Fehler: <code class="mono">${(e && e.message) ? e.message : e}</code>`, 'danger');
