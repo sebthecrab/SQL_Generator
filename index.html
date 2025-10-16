@@ -430,6 +430,38 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
           const stmt = db.prepare(sql);
           stmt.bind(params); stmt.step(); stmt.free();
         }
+        // --- Initiale Seed-Daten (aus Original-DB) ---
+const seedSQL = `
+INSERT INTO tblDeviceAbbreviations ("DeviceAbbreviation", "DeviceDescription", "Timestamp") VALUES 
+('BDA', 'Beleuchtungs-Daueranschluss', '2021-05-19 08:16:25'),
+('BPA', 'Beleuchtungs-Prüfanschluss', '2021-05-19 08:16:25'),
+('ESA', 'Einphasenanschluss', '2021-05-19 08:16:25'),
+('DSA', 'Dreiphasenanschluss', '2021-05-19 08:16:25'),
+('RPA', 'Röntgenprüfanschluss', '2021-05-19 08:16:25'),
+('CSA', 'Computersystemanschluss', '2021-05-19 08:16:25');
+
+INSERT INTO tblIDNumberCaptions ("Name", "Order", "NewOrder", "ColumnNo", "NewCaption", "Hide", "ProtocolNumber", "Mandatory", "Export", "TimeStamp") VALUES
+('Inventarnummer', 1, NULL, 1, 'Inventarnummer', 0, 1, 1, 1, '2021-05-19 08:16:25'),
+('Standort', 2, NULL, 2, 'Standort', 0, 1, 1, 1, '2021-05-19 08:16:25'),
+('Bezeichnung', 3, NULL, 3, 'Bezeichnung', 0, 1, 1, 1, '2021-05-19 08:16:25'),
+('Hersteller', 4, NULL, 4, 'Hersteller', 0, 1, 1, 1, '2021-05-19 08:16:25'),
+('Typ', 5, NULL, 5, 'Typ', 0, 1, 1, 1, '2021-05-19 08:16:25'),
+('Klasse', 6, NULL, 6, 'Klasse', 0, 1, 1, 1, '2021-05-19 08:16:25'),
+('Norm', 7, NULL, 7, 'Norm', 0, 1, 1, 1, '2021-05-19 08:16:25'),
+('Unter-Norm', 8, NULL, 8, 'Unter-Norm', 0, 1, 1, 1, '2021-05-19 08:16:25'),
+('Fabriknummer', 9, NULL, 9, 'Fabriknummer', 0, 1, 1, 1, '2021-05-19 08:16:25'),
+('Benutzer1', 10, NULL, 10, 'Benutzer1', 0, 1, 0, 1, '2021-05-19 08:16:25'),
+('Benutzer2', 11, NULL, 11, 'Benutzer2', 0, 1, 0, 1, '2021-05-19 08:16:25'),
+('Benutzer3', 12, NULL, 12, 'Benutzer3', 0, 1, 0, 1, '2021-05-19 08:16:25'),
+('Bemerkung', 13, NULL, 13, 'Bemerkung', 0, 1, 0, 1, '2021-05-19 08:16:25');
+
+INSERT INTO tblMasterProcedureCopy ("FunctionNumber", "FunctionName", "Test", "StatusText", "Picture", "WorstCase", "TestTime", "Parameter1", "Parameter2", "Parameter3", "Parameter4", "Min", "Max", "First", "Expected", "Unit", "RangeMin", "RangeMax", "TypeParameter1", "TypeParameter2", "TypeParameter3", "TypeParameter4", "WorstCaseCondition", "Simulation", "WebServer") VALUES
+(1, 'Schutzleiter', 'PE-Test', 'Bestanden', NULL, 0, 1.5, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Ohm', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0),
+(2, 'Isolationswiderstand', 'Iso-Test', 'Bestanden', NULL, 0, 2.3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'MΩ', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0),
+(3, 'Ersatzableitstrom', 'EA-Test', 'Bestanden', NULL, 0, 2.9, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'mA', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0),
+(4, 'Funktionsprüfung', 'FP-Test', 'Bestanden', NULL, 0, 4.1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0);
+`;
+
 
         db.run('COMMIT;');
 
