@@ -20,7 +20,7 @@
       <div class="col-12 col-lg-7">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h1 class="h4 mb-3">SQLite3 Generator – V1.14</h1>
+            <h1 class="h4 mb-3">SQLite3 Generator – V1.15</h1>
 
             <!-- PDF Upload -->
             <div class="mb-3">
@@ -263,7 +263,7 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
           parsed.Street = lines[streetIdx];
 
           // *** NAME: exakt die Zeile ÜBER der Straße ***
-          const iAbove = streetIdx  -1;
+          const iAbove = streetIdx  +1;
           if (iAbove >= 0 && notVendor(iAbove)) {
             const above = lines[iAbove].trim();
             if (above && !above.includes(',')) parsed.Name = above;
