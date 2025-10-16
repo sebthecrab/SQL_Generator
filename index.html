@@ -10,8 +10,8 @@
     .card{border-radius:1rem}
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;}
     .small-mono{font-size:.9rem}
-    .kv dt{width:10rem}
-    .kv dd{margin-left:11.5rem}
+    .kv dt{width:11rem}
+    .kv dd{margin-left:12.5rem}
   </style>
 </head>
 <body>
@@ -20,30 +20,30 @@
       <div class="col-12 col-lg-7">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h1 class="h4 mb-3">SQLite3 Generator – V1.10 (mit PDF-Import)</h1>
+            <h1 class="h4 mb-3">SQLite3 Generator – V1.11 </h1>
 
             <!-- PDF Upload -->
             <div class="mb-3">
               <label class="form-label">PDF mit Kundendaten</label>
               <input id="pdfInput" type="file" class="form-control" accept="application/pdf">
-              <div class="form-text">
-                Es werden Kundennummer, Firma, Ansprechpartner, Straße, PLZ, Ort aus der <strong>Hauptanschrift</strong> übernommen.
-              </div>
             </div>
 
             <!-- Vorschau erkannter Werte -->
             <div class="mb-3" id="pdfPreviewWrap" style="display:none;">
               <div class="alert alert-info mb-2">
-                <strong>Erkannte PDF-Daten (Kunde)</strong> – werden beim Export verwendet.
+                <strong>Erkannte PDF-Daten</strong> – werden beim Export verwendet.
               </div>
               <dl class="kv small-mono">
                 <dt>CustomerNumber</dt><dd id="pvCustomerNumber">–</dd>
-                <dt>Name</dt><dd id="pvName">–</dd>
+                <dt>Name (Kunde)</dt><dd id="pvName">–</dd>
                 <dt>Contact</dt><dd id="pvContact">–</dd>
+                <dt>Telefon (aus Ansprechpartner)</dt><dd id="pvTel">–</dd>
                 <dt>Street</dt><dd id="pvStreet">–</dd>
                 <dt>ZIP</dt><dd id="pvZIP">–</dd>
                 <dt>City</dt><dd id="pvCity">–</dd>
                 <dt>Country</dt><dd id="pvCountry">DE - Deutschland</dd>
+                <hr/>
+                <dt>Prüfobjekt – Adresse</dt><dd id="pvPO">–</dd>
               </dl>
             </div>
 
@@ -63,11 +63,11 @@
             <hr class="my-4">
 
             <details>
-              <summary class="mb-2"><strong>Inhalt &amp; Seed-Daten (Kurzfassung)</strong></summary>
+              <summary class="mb-2"><strong>Inhalt &amp; Seed-Daten</strong></summary>
               <ul class="small">
-                <li><span class="mono">tblCustomer</span> – aus PDF befüllt</li>
+                <li><span class="mono">tblCustomer</span> – aus PDF (nach deinen Regeln)</li>
                 <li><span class="mono">tblDeviceAbbreviations</span>, <span class="mono">tblIDNumberCaptions</span>, <span class="mono">tblMasterProcedureCopy</span> – Seed</li>
-                <li><span class="mono">tblCompany</span> – feste E+Service+Check (Laucha) als Lieferant</li>
+                <li><span class="mono">tblCompany</span> – feste E+Service+Check (Laucha) als Lieferant (separat vom Kunden)</li>
               </ul>
             </details>
           </div>
@@ -85,9 +85,11 @@
     </div>
   </main>
 
+  <!-- Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
   <script>
     const $ = sel => document.querySelector(sel);
     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -164,23 +166,24 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
       SQL = await initSqlJs({ locateFile: f => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/' + f });
     })();
 
-    // -------- PDF -> lines -> Kunde (Vendor explicit raus) --------
-    const parsed = { CustomerNumber:null, Name:null, Contact:null, Street:null, ZIP:null, City:null, Country:'DE - Deutschland' };
+    // -------- PDF -> lines --------
+    const parsed = {
+      CustomerNumber:null, Name:null, Contact:null, Tel:null,
+      Street:null, ZIP:null, City:null, Country:'DE - Deutschland',
+      PO_Address:null
+    };
 
-    // Vendor-Patterns und -Zeilen
+    // Lieferant ausfiltern
     const vendorMatchers = [
-      /E\+?Service\+?Check/i,
-      /Große?\s+Ziegelohstraße/i,
-      /\b06636\b/i,
-      /\bLaucha\b/i,
-      /\(Unstrut\)/i
+      /E\+?Service\+?Check/i, /Ziegelohstr\.?|Ziegelohstraße/i, /\b06636\b/i, /Laucha/i, /\(Unstrut\)/i
     ];
     function isVendorLine(line){ return vendorMatchers.some(rx => rx.test(line)); }
 
-    // Helper
+    // Heuristiken
     const isStreet = s => {
-      if (!s || s.includes(',')) return false;
-      return /(?:straße|str\.?|allee|weg|platz|gasse)\s*\d+[a-zA-Z]?$/i.test(s);
+      if (!s || s.includes(',')) return false; // Komma = meist Prüfobjekt-Block, nicht die einzeilige Kundenadresse
+      // Straße muss NICHT "Straße" enthalten (z. B. "Moosbauerweg 5"); erfordert Hausnummer am Ende
+      return /[A-Za-zÄÖÜäöüß\.\- ]+\s+\d+[a-zA-Z]?$/.test(s);
     };
     const isZipCity = s => {
       if (!s || s.includes(',')) return false;
@@ -190,7 +193,6 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
       const m = s.match(/\b(\d{5})\b\s+([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-\(\) ]+)$/);
       return m ? {zip:m[1], city:m[2].trim()} : null;
     };
-    const isLikelyOrg = s => /\b(Universität|Hochschule|GmbH|AG|Stiftung|Klinikum|Stadt|Amt|Behörde)\b/i.test(s);
 
     async function pdfToLines(file){
       const ab = await file.arrayBuffer();
@@ -213,7 +215,6 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
           if(line) all.push(line);
         });
       }
-      // de-dupe
       return [...new Set(all)];
     }
 
@@ -223,100 +224,93 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
       try{
         const lines = await pdfToLines(file);
 
-        // Vendor-Bereich lokalisieren (Index der Vendor-Zeilen + Puffer)
+        // Vendor-Index (±2 Zeilen) zur Sicherheit ignorieren
         const vendorIdx = new Set();
         lines.forEach((l, i) => {
-          if (isVendorLine(l)) {
-            for (let k = Math.max(0,i-2); k <= Math.min(lines.length-1,i+2); k++) vendorIdx.add(k);
-          }
+          if (isVendorLine(l)) for (let k = Math.max(0,i-2); k <= Math.min(lines.length-1,i+2); k++) vendorIdx.add(k);
         });
-
         const notVendor = (i) => !vendorIdx.has(i) && !isVendorLine(lines[i]);
 
-        // 1) Kundennummer (aus "Kundennummer|Kunden-Nr.|Kundennr."), bevorzugt nicht-Vendor
-        let cust=null;
+        // Kundennummer: explizit „Kunden-Nr.: <digits>“ (Beispiel im Referenz-PDF) :contentReference[oaicite:1]{index=1}
         for(let i=0;i<lines.length;i++){
           if(!notVendor(i)) continue;
-          const m = lines[i].match(/Kunden?(nummer|nr\.?|nr)\s*[:\-]?\s*([0-9]{4,})/i);
-          if(m){ cust = m[2]; break; }
+          const m = lines[i].match(/Kunden-?Nr\.?\s*:\s*([0-9]+)/i);
+          if(m){ parsed.CustomerNumber = m[1]; break; }
         }
-        parsed.CustomerNumber = cust ?? parsed.CustomerNumber;
 
-        // 2) Straße (einzeilig, ohne Komma), nicht im Vendor-Bereich
+        // Ansprechpartner & Telefon: „Ansprechpartner: Herr ... Tel: …“ → split vor „Tel“ (Beispiel im Referenz-PDF) :contentReference[oaicite:2]{index=2}
+        for (let i=0;i<lines.length;i++){
+          if(!notVendor(i)) continue;
+          const m = lines[i].match(/^\s*Ansprechpartner\s*:\s*(.+)$/i);
+          if(m){
+            const raw = m[1].trim();
+            const [namePart, telPart] = raw.split(/\bTel\b\s*:?\s*/i);
+            if(namePart) parsed.Contact = namePart.trim().replace(/[,\s]+$/,'');
+            if(telPart) parsed.Tel = telPart.trim();
+            break;
+          }
+        }
+
+        // Prüfobjekt-Adresse: ganze Zeile hinter „Adresse:“ (Beispiel im Referenz-PDF) :contentReference[oaicite:3]{index=3}
+        for(let i=0;i<lines.length;i++){
+          const m = lines[i].match(/^\s*Adresse\s*:\s*(.+)$/i);
+          if(m){ parsed.PO_Address = m[1].trim(); break; }
+        }
+
+        // Straße → Name (Zeile darüber) → PLZ/Ort (Zeile danach)
         let streetIdx=-1;
         for(let i=0;i<lines.length;i++){
           if(!notVendor(i)) continue;
           if(isStreet(lines[i])){ streetIdx=i; break; }
         }
-        if(streetIdx>=0) parsed.Street = lines[streetIdx];
-
-        // 3) PLZ + Ort, bevorzugt direkt nach Straße (nächste 5 Zeilen), nicht Vendor
-        let zc=null, zcIdx=-1;
         if(streetIdx>=0){
-          for(let i=streetIdx+1; i<Math.min(lines.length, streetIdx+6); i++){
-            if(!notVendor(i)) continue;
-            if(isZipCity(lines[i])){ zcIdx=i; zc=extractZipCity(lines[i]); break; }
-          }
-        }
-        if(!zc){ // globaler Fallback (aber nicht Vendor)
-          for(let i=0;i<lines.length;i++){
-            if(!notVendor(i)) continue;
-            if(isZipCity(lines[i])){ zcIdx=i; zc=extractZipCity(lines[i]); break; }
-          }
-        }
-        if(zc){ parsed.ZIP = zc.zip; parsed.City = zc.city; }
+          parsed.Street = lines[streetIdx];
 
-        // 4) Ansprechpartner – nicht aus Vendor-Bereich
-        let contact=null;
-        for(let i=0;i<lines.length;i++){
-          if(!notVendor(i)) continue;
-          const m = lines[i].match(/\b(Herr|Frau)\s+[A-ZÄÖÜ][\wÄÖÜäöüß\-]+(?:\s+[A-ZÄÖÜ][\wÄÖÜäöüß\-]+)?/);
-          if(m){ contact = m[0]; break; }
-        }
-        parsed.Contact = contact ?? parsed.Contact;
-
-        // 5) Firmenname – Zeilen vor der Straße (max. 3), keine Kommas, nicht Vendor
-        let name=null;
-        if(streetIdx>=0){
-          for(let i=Math.max(0,streetIdx-3); i<streetIdx; i++){
-            if(!notVendor(i)) continue;
-            const l = lines[i];
-            if(l.includes(',')) continue; // Prüfobjekt ignorieren
-            if(isLikelyOrg(l)) { name=l; break; }
-          }
-        }
-        // Fallback: erste nicht-Vendor-Zeile, die nach Organisation klingt
-        if(!name){
-          for(let i=0;i<lines.length;i++){
-            if(!notVendor(i)) continue;
-            const l=lines[i];
+          // Name des Kunden = Zeile über der Straße (deine Regel)
+          for(let j=streetIdx-1; j>=0; j--){
+            if(!notVendor(j)) continue;
+            const l = lines[j].trim();
+            if(!l) continue;
+            // keine Komma-getr. Prüfobjekt-Zeilen
             if(l.includes(',')) continue;
-            if(isLikelyOrg(l)) { name=l; break; }
+            parsed.Name = l;
+            break;
+          }
+
+          // PLZ/Ort suchen (nächste 4 Zeilen)
+          for(let j=streetIdx+1; j<=streetIdx+4 && j<lines.length; j++){
+            if(!notVendor(j)) continue;
+            if(isZipCity(lines[j])){
+              const zc = extractZipCity(lines[j]);
+              if(zc){ parsed.ZIP = zc.zip; parsed.City = zc.city; }
+              break;
+            }
           }
         }
-        parsed.Name = name ?? parsed.Name;
 
         // Country fix
         parsed.Country = 'DE - Deutschland';
 
-        // Vorschau
+        // Vorschau füllen
         $('#pvCustomerNumber').textContent = parsed.CustomerNumber ?? '–';
         $('#pvName').textContent          = parsed.Name ?? '–';
         $('#pvContact').textContent       = parsed.Contact ?? '–';
+        $('#pvTel').textContent           = parsed.Tel ?? '–';
         $('#pvStreet').textContent        = parsed.Street ?? '–';
         $('#pvZIP').textContent           = parsed.ZIP ?? '–';
         $('#pvCity').textContent          = parsed.City ?? '–';
         $('#pvCountry').textContent       = parsed.Country ?? 'DE - Deutschland';
+        $('#pvPO').textContent            = parsed.PO_Address ?? '–';
         $('#pdfPreviewWrap').style.display='block';
 
-        showAlert('PDF gelesen. Lieferantenadresse ignoriert; Hauptanschrift des Kunden übernommen.', 'success');
+        showAlert('PDF gelesen. Kundennummer, Name (Zeile über Straße), Ansprechpartner (ohne Tel), Prüfobjekt-Adresse übernommen.', 'success');
       }catch(err){
         console.error(err);
         showAlert('PDF konnte nicht verlässlich gelesen werden. Bitte andere Datei probieren.', 'danger');
       }
     });
 
-    // DB bauen & exportieren
+    // ---------- DB bauen & exportieren ----------
     let SQLDB;
     async function buildAndExport(){
       if(!SQL){ showAlert('SQL-Engine lädt noch. Bitte erneut versuchen …','warning'); return; }
@@ -327,18 +321,11 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
         db.run('BEGIN;');
         db.run(schemaSQL);
 
-        // tblCompany = Android
-        {
-          const sql = `
-            INSERT INTO android_metadata (
-              locale
-            ) VALUES (?);
-          `;
-          const params0 = ['de'];
-          const stmt = db.prepare(sql); stmt.bind(params0); stmt.step(); stmt.free();
-        }
-        
-        // tblCompany = Lieferant (fest)
+        // android_metadata
+        { const s=`INSERT INTO android_metadata(locale) VALUES (?);`;
+          const st=db.prepare(s); st.bind(['de']); st.step(); st.free(); }
+
+        // tblCompany = Lieferant (fest, unabhängig vom Kunden)
         {
           const sql = `
             INSERT INTO tblCompany (
@@ -352,15 +339,16 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
           const stmt = db.prepare(sql); stmt.bind(params); stmt.step(); stmt.free();
         }
 
-        // tblCustomer = Kunde (aus PDF)
+        // tblCustomer – aus PDF
         const cust = {
-          CustomerNumber: parsed.CustomerNumber ?? '12345',
-          Name:           parsed.Name ?? 'Muster Firma',
-          Contact:        parsed.Contact ?? 'Herr Mustermann',
-          Street:         parsed.Street ?? 'Muster-Str. 1',
-          ZIP:            parsed.ZIP ?? '99999',
-          City:           parsed.City ?? 'Musterstadt',
-          Country:        parsed.Country ?? 'DE - Deutschland'
+          CustomerNumber: parsed.CustomerNumber ?? '0',
+          Name:           parsed.Name ?? '',
+          Contact:        parsed.Contact ?? '',
+          Street:         parsed.Street ?? '',
+          ZIP:            parsed.ZIP ?? '',
+          City:           parsed.City ?? '',
+          Country:        parsed.Country ?? 'DE - Deutschland',
+          Tel:            parsed.Tel ?? ''
         };
         {
           const sql = `
@@ -370,12 +358,12 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
           `;
           const params2 = [
             String(cust.CustomerNumber), cust.Name, cust.Contact, cust.Street,
-            cust.ZIP, cust.City, cust.Country, '', '', '', '', now, now, 12
+            cust.ZIP, cust.City, cust.Country, cust.Tel, '', '', '', now, now, 12
           ];
           const stmt = db.prepare(sql); stmt.bind(params2); stmt.step(); stmt.free();
         }
 
-        // Seeds
+        // Seeds (unverändert)
         const seedSQL = `
 INSERT INTO tblDeviceAbbreviations ("DeviceAbbreviation","DeviceDescription","Timestamp") VALUES
 ('BDA','Beleuchtungs-Daueranschluss','2021-05-19 08:16:25'),
@@ -397,8 +385,7 @@ INSERT INTO tblIDNumberCaptions ("Name","Order","NewOrder","ColumnNo","NewCaptio
 ('Fabriknummer',9,NULL,9,'Fabriknummer',0,1,1,1,'2021-05-19 08:16:25'),
 ('Benutzer1',10,NULL,10,'Benutzer1',0,1,0,1,'2021-05-19 08:16:25'),
 ('Benutzer2',11,NULL,11,'Benutzer2',0,1,0,1,'2021-05-19 08:16:25'),
-('Benutzer3',12,NULL,12,'Benutzer3',0,1,0,1,'2021-05-19 08:16:25'),
-('Bemerkung',13,NULL,13,'Bemerkung',0,1,0,1,'2021-05-19 08:16:25');
+('Benutzer3',12,NULL,12,'Benutzer3',0,1,0,1,'2021-05-19 08:16:25');
 
 INSERT INTO tblMasterProcedureCopy ("FunctionNumber","FunctionName","Test","StatusText","Picture","WorstCase","TestTime","Parameter1","Parameter2","Parameter3","Parameter4","Min","Max","First","Expected","Unit","RangeMin","RangeMax","TypeParameter1","TypeParameter2","TypeParameter3","TypeParameter4","WorstCaseCondition","Simulation","WebServer") VALUES
 (1,'Schutzleiter','PE-Test','Bestanden',NULL,0,1.5,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'Ohm',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0),
