@@ -21,7 +21,7 @@
       <div class="col-12 col-lg-7">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h1 class="h4 mb-3">SQLite3 erstellen &amp; exportieren - V2.2</h1>
+            <h1 class="h4 mb-3">SQLite3 erstellen &amp; exportieren - V2.3</h1>
             <p class="text-muted mb-4">
               Diese Seite erzeugt lokal im Browser (per <span class="mono">sql.js</span>) eine <strong>SQLite3</strong>-Datei
               mit deinem Schema &amp; Startdaten. Nichts verlässt dein Gerät.
@@ -145,13 +145,13 @@ CREATE TABLE IF NOT EXISTS tblCustomer (
   "Remark" TEXT NOT NULL, -- declared=VARCHAR2 (255); empty-string,
   "Timestamp" TEXT NOT NULL, -- declared=DATETIME; datetime-like,
   "ArchiveDate" TEXT NOT NULL, -- declared=DATETIME; datetime-like,
-  "ArchiveInterval" INTEGER NOT NULL, -- declared=INT
+  "ArchiveInterval" INTEGER NOT NULL -- declared=INT
 );
 
 CREATE TABLE IF NOT EXISTS tblDeviceAbbreviations (
   "DeviceAbbreviation" TEXT NOT NULL, -- declared=VARCHAR2 (10),
   "DeviceDescription" TEXT NOT NULL, -- declared=VARCHAR2 (50),
-  "Timestamp" TEXT NOT NULL, -- declared=DATETIME; datetime-like
+  "Timestamp" TEXT NOT NULL -- declared=DATETIME; datetime-like
 );
 
 CREATE TABLE IF NOT EXISTS tblIDNumberCaptions (
@@ -164,7 +164,7 @@ CREATE TABLE IF NOT EXISTS tblIDNumberCaptions (
   "ProtocolNumber" INTEGER NOT NULL, -- declared=INT,
   "Mandatory" INTEGER NOT NULL, -- declared=INT,
   "Export" INTEGER NOT NULL, -- declared=BIT,
-  "TimeStamp" TEXT NOT NULL, -- declared=DATETIME; datetime-like
+  "TimeStamp" TEXT NOT NULL -- declared=DATETIME; datetime-like
 );
 
 CREATE TABLE IF NOT EXISTS tblIDNumbers (
@@ -211,7 +211,7 @@ CREATE TABLE IF NOT EXISTS tblIDNumbers (
   "Status" INTEGER NOT NULL, -- declared=INT,
   "Remark2" TEXT NOT NULL, -- declared=VARCHAR2 (50),
   "TestNumber" INTEGER NOT NULL, -- declared=INT,
-  "Timestamp" TEXT NOT NULL, -- declared=DATETIME; datetime-like
+  "Timestamp" TEXT NOT NULL -- declared=DATETIME; datetime-like
 );
 
 CREATE TABLE IF NOT EXISTS tblMasterProcedureCopy (
@@ -239,7 +239,7 @@ CREATE TABLE IF NOT EXISTS tblMasterProcedureCopy (
   "TypeParameter4" TEXT, -- declared=VARCHAR2 (10),
   "WorstCaseCondition" TEXT, -- declared=VARCHAR2 (5),
   "Simulation" TEXT, -- declared=VARCHAR2 (50),
-  "WebServer" INTEGER NOT NULL, -- declared=BIT
+  "WebServer" INTEGER NOT NULL -- declared=BIT
 );
 
 CREATE TABLE IF NOT EXISTS tblResults (
@@ -264,7 +264,7 @@ CREATE TABLE IF NOT EXISTS tblResults (
   "First" TEXT NOT NULL, -- declared=VARCHAR2 (30); empty-string,
   "Expected" TEXT NOT NULL, -- declared=VARCHAR2 (30); empty-string,
   "Result" TEXT NOT NULL, -- declared=VARCHAR2 (50); empty-string,
-  "OK" TEXT NOT NULL, -- declared=VARCHAR2 (10)
+  "OK" TEXT NOT NULL -- declared=VARCHAR2 (10)
 );
 
 CREATE TABLE IF NOT EXISTS tblResultsHeader (
@@ -284,7 +284,7 @@ CREATE TABLE IF NOT EXISTS tblResultsHeader (
   "TesterSerialNumber" TEXT NOT NULL, -- declared=VARCHAR2 (50),
   "LineVoltage" TEXT NOT NULL, -- declared=VARCHAR2 (10); empty-string,
   "Protocol" TEXT NOT NULL, -- declared=VARCHAR2 (100); empty-string,
-  "Timestamp" TEXT NOT NULL, -- declared=DATETIME; datetime-like
+  "Timestamp" TEXT NOT NULL -- declared=DATETIME; datetime-like
 );
 
 CREATE TABLE IF NOT EXISTS tblSecutestRegistration (
@@ -303,7 +303,7 @@ CREATE TABLE IF NOT EXISTS tblSecutestRegistration (
   "Email" TEXT, -- declared=VARCHAR2 (50),
   "Country" TEXT, -- declared=VARCHAR2 (20),
   "Supplier" TEXT, -- declared=VARCHAR2 (50),
-  "Timestamp" TEXT, -- declared=DATETIME
+  "Timestamp" TEXT -- declared=DATETIME
 );
 
 CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingHeader (
@@ -327,7 +327,7 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingHeader (
   "TestDetail7" TEXT, -- declared=BIT,
   "TestResult7" TEXT, -- declared=BIT,
   "TestDetail8" TEXT, -- declared=BIT,
-  "TestResult8" TEXT, -- declared=BIT
+  "TestResult8" TEXT -- declared=BIT
 );
 
 CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
@@ -338,7 +338,7 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
   "ResultNumber" TEXT, -- declared=INT,
   "VisTestNumber" TEXT, -- declared=INT,
   "InspectionNumber" TEXT, -- declared=INT,
-  "InspectionResult" TEXT, -- declared=BIT
+  "InspectionResult" TEXT -- declared=BIT
 );
 `.trim();
 
