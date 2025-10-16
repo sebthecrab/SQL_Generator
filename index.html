@@ -251,7 +251,7 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
           parsed.Street = lines[streetIdx];
 
           // *** NAME: exakt die Zeile ÜBER der Straße ***
-const iAbove = streetIdx + 2; // statt -1
+const iAbove = streetIdx + 3; // statt -1
 if (iAbove < lines.length && notVendor(iAbove)) {
   const above = lines[iAbove].trim();
   if (above && !above.includes(',')) parsed.Name = above;
