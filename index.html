@@ -372,6 +372,15 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
   // 1) Schema anlegen
   db.run(schemaSQL);
 
+  {
+    const sql0 = `
+      INSERT INTO android_metadata(
+        locale1
+      ) VALUES (?);
+    `;
+    const params0 = ['de'];
+    const stmt0 = db.prepare(sql0); stmt0.bind(params0); stmt0.step(); stmt0.free();
+  }
   // 2) Startzeilen in tblCompany/tblCustomer
   {
     const sql1 = `
@@ -389,7 +398,7 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
         CustomerNumber, Name, Contact, Street, ZIP, City, Country, Tel, Fax, Email, Remark, Timestamp, ArchiveDate, ArchiveInterval
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
-    const params2 = ['666','Max Muster Corp','Max Muster','Musterstraße 3','666','Musterstadt','DE - Deutschland',null,null,null,null,now,now,12];
+    const params2 = ['666','Max Muster Corp','Max Muster','Musterstraße 3','666','Musterstadt','DE - Deutschland','','','','',now,now,12];
     const stmt2 = db.prepare(sql2); stmt2.bind(params2); stmt2.step(); stmt2.free();
   }
 
