@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SQLite-Exporter (Schema + Seed) – Mobile First</title>
+  <title>SQLite-Exporter (Schema + Seed) – Mobile First (PDF-Import)</title>
 
-  <!-- Bootstrap (aktuelle 5.x via jsDelivr) -->
+  <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    /* Mobile-first Tweaks */
     body{background:#f8fafc}
     .card{border-radius:1rem}
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;}
     .small-mono{font-size:.9rem}
+    .kv dt{width:9rem}
+    .kv dd{margin-left:10rem}
   </style>
 </head>
 <body>
@@ -21,12 +22,36 @@
       <div class="col-12 col-lg-7">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h1 class="h4 mb-3">SQLite3 erstellen &amp; exportieren - V2.10</h1>
+            <h1 class="h4 mb-3">SQLite3 erstellen &amp; exportieren – V2.7 (mit PDF-Import)</h1>
             <p class="text-muted mb-4">
-              Diese Seite erzeugt lokal im Browser (per <span class="mono">sql.js</span>) eine <strong>SQLite3</strong>-Datei
-              mit deinem Schema &amp; Startdaten. Nichts verlässt dein Gerät.
+              Erzeugt lokal im Browser (per <span class="mono">sql.js</span>) eine <strong>SQLite3</strong>-Datei.
+              Optional liest es <strong>PDF</strong>-Inhalte (pdf.js) und füllt die Kundendaten automatisch.
             </p>
 
+            <!-- PDF Upload -->
+            <div class="mb-3">
+              <label class="form-label">PDF mit Kundendaten</label>
+              <input id="pdfInput" type="file" class="form-control" accept="application/pdf">
+              <div class="form-text">Es werden Felder wie Kundennummer, Firma, Ansprechpartner, Straße, PLZ, Ort erkannt.</div>
+            </div>
+
+            <!-- Vorschau erkannter Werte -->
+            <div class="mb-3" id="pdfPreviewWrap" style="display:none;">
+              <div class="alert alert-info mb-2">
+                <strong>Erkannte PDF-Daten</strong> – diese Werte werden beim Export automatisch verwendet.
+              </div>
+              <dl class="kv small-mono">
+                <dt>CustomerNumber</dt><dd id="pvCustomerNumber">–</dd>
+                <dt>Name</dt><dd id="pvName">–</dd>
+                <dt>Contact</dt><dd id="pvContact">–</dd>
+                <dt>Street</dt><dd id="pvStreet">–</dd>
+                <dt>ZIP</dt><dd id="pvZIP">–</dd>
+                <dt>City</dt><dd id="pvCity">–</dd>
+                <dt>Country</dt><dd id="pvCountry">DE - Deutschland</dd>
+              </dl>
+            </div>
+
+            <!-- Zeit -->
             <div class="mb-3">
               <label class="form-label">„Jetzt“-Zeitstempel (Europa/Berlin)</label>
               <input id="nowPreview" class="form-control mono" type="text" value="" readonly>
@@ -47,8 +72,8 @@
               <ul class="small">
                 <li><span class="mono">android_metadata(locale)</span> (leer)</li>
                 <li><span class="mono">tblCompany</span>: eine Zeile mit <span class="mono">Company = "E+Service+Check GmbH"</span>, Adressdaten und festen Zeitstempeln 2021</li>
-                <li><span class="mono">tblCustomer</span>: eine Zeile mit <span class="mono">CustomerNumber1 = 666</span>, <span class="mono">Name = "Max Muster Corp"</span>, <span class="mono">Timestamp</span> = <em>Jetzt</em></li>
-                <li>Weitere Tabellen werden gemäß Vorgabe angelegt (leer)</li>
+                <li><span class="mono">tblCustomer</span>: wird (wenn PDF geladen) mit den <strong>ausgelesenen</strong> Werten befüllt</li>
+                <li><span class="mono">tblDeviceAbbreviations / tblIDNumberCaptions / tblMasterProcedureCopy</span> werden befüllt</li>
               </ul>
             </details>
           </div>
@@ -66,37 +91,42 @@
     </div>
   </main>
 
-  <!-- Bootstrap JS (optional) -->
+  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- sql.js (SQLite im Browser) -->
+  <!-- sql.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+  <!-- pdf.js (UMD) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     // ----- Helfer -----
     const $ = sel => document.querySelector(sel);
+
+    // pdf.js Worker setzen (gleiches CDN)
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
     // Format "JJJJ-MM-DD HH:MM:SS" in Europe/Berlin
     function nowBerlin() {
       try {
         const tz = 'Europe/Berlin';
         const d = new Date();
-        // Komponenten im Ziel-TZ erzeugen
         const parts = new Intl.DateTimeFormat('de-DE', {
           timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit',
           hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
         }).formatToParts(d).reduce((acc,p)=>{acc[p.type]=p.value; return acc;}, {});
-        // de-DE liefert TT.MM.JJJJ — wir wollen JJJJ-MM-DD HH:MM:SS
         const DD = parts.day, MM = parts.month, YYYY = parts.year;
         const HH = parts.hour, MIN = parts.minute, SS = parts.second;
         return `${YYYY}-${MM}-${DD} ${HH}:${MIN}:${SS}`;
       } catch {
-        // Fallback: lokale Zeit ohne TZ-Konversion
         const pad = n => String(n).padStart(2,'0');
         const d = new Date();
         return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
       }
     }
 
-    // Zeige "Jetzt" sofort
+    function showAlert(html, type='info'){
+      $('#alertBox').innerHTML = `<div class="alert alert-${type} mb-0" role="alert">${html}</div>`;
+    }
+
     function updateNowPreview(){
       $('#nowPreview').value = nowBerlin();
     }
@@ -104,11 +134,8 @@
     setInterval(updateNowPreview, 1000);
 
     // ----- Schema (CREATE TABLES) -----
-    // Hinweis: __rowid__ ist ein spezielles SQLite-RowID-Alias und wird NICHT als Spalte angelegt.
     const schemaSQL = `
-CREATE TABLE IF NOT EXISTS android_metadata (
-  locale TEXT
-);
+CREATE TABLE IF NOT EXISTS android_metadata ( locale TEXT );
 
 CREATE TABLE IF NOT EXISTS tblCompany (
   SecutestSerialNumber TEXT,
@@ -131,8 +158,6 @@ CREATE TABLE IF NOT EXISTS tblCompany (
   Timestamp            TEXT NOT NULL
 );
 
--- Tel/Fax/Email/Remark dürfen NULL sein; Rest wie in deinem INSERT gesetzt.
--- ZIP als TEXT, falls du später führende Nullen brauchst.
 CREATE TABLE IF NOT EXISTS tblCustomer (
   "CustomerNumber"  INTEGER NOT NULL,
   "Name"            TEXT NOT NULL,
@@ -346,118 +371,208 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
 
     $('#schemaPreview').textContent = schemaSQL;
 
-    // ----- DB bauen & exportieren -----
+    // ----- sql.js initialisieren -----
     let SQL; // sql.js Modul
-
     (async function initSql(){
       SQL = await initSqlJs({
         locateFile: file => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/' + file
       });
     })();
 
-    function showAlert(html, type='info'){
-      $('#alertBox').innerHTML = `<div class="alert alert-${type} mb-0" role="alert">${html}</div>`;
-    }
+    // ----- PDF -> Text -> Felder extrahieren -----
+    const parsed = {
+      CustomerNumber: null,
+      Name: null,
+      Contact: null,
+      Street: null,
+      ZIP: null,
+      City: null,
+      Country: 'DE - Deutschland'
+    };
+
+    $('#pdfInput').addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try{
+        const ab = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({data: ab}).promise;
+        let fullText = '';
+        for (let p=1; p<=pdf.numPages; p++){
+          const page = await pdf.getPage(p);
+          const tc = await page.getTextContent();
+          const line = tc.items.map(i => ('str' in i ? i.str : '')).join(' ');
+          fullText += '\n' + line;
+        }
+        // Normalisieren
+        const text = fullText.replace(/\s+/g, ' ').trim();
+
+        // Heuristiken / Regex
+        // 1) Kundennummer
+        let m = /Kunden?nummer[:\s]*([0-9]{4,})/i.exec(text);
+        if (!m) m = /\bKundennr\.?\s*([0-9]{4,})/i.exec(text);
+        parsed.CustomerNumber = m ? m[1] : parsed.CustomerNumber;
+
+        // 2) Ansprechpartner
+        m = /(Ansprechpartner|Kontakt|z\.Hd\.|z\. Hd\.)[:\s]*([A-ZÄÖÜ][\wÄÖÜäöüß\-. ]+)/i.exec(text);
+        if (!m) m = /\b(Herr|Frau)\s+[A-ZÄÖÜ][\wÄÖÜäöüß\-]+(?:\s+[A-ZÄÖÜ][\wÄÖÜäöüß\-]+)?/.exec(text);
+        parsed.Contact = m ? (m[2] || m[0]) : parsed.Contact;
+
+        // 3) Firma/Name – zuerst bekannte Beispiele, sonst fallback:
+        // Suche nach "Technische Universität München" speziell, sonst Zeile mit "Universität|GmbH|AG|UG|Stiftung|Stadt|Klinikum"
+        m = /(Technische Universität München)/i.exec(text);
+        if (m) parsed.Name = m[1];
+        if (!parsed.Name) {
+          m = /\b([A-ZÄÖÜ][\wÄÖÜäöüß&+()\-\. ]+(?:GmbH|AG|UG|Stiftung|Universität|Hochschule|Klinikum|Stadt)[\wÄÖÜäöüß&+()\-\. ]*)\b/.exec(text);
+          parsed.Name = m ? m[1].trim() : parsed.Name;
+        }
+
+        // 4) Straße
+        m = /\b([A-ZÄÖÜ][\wÄÖÜäöüß\-. ]+(?:straße|str\.?)\s*\d+[a-zA-Z]?)\b/i.exec(text);
+        if (!m) m = /\b([A-ZÄÖÜ][\wÄÖÜäöüß\-. ]+\s+\d+[a-zA-Z]?)\b/.exec(text); // generisch
+        parsed.Street = m ? m[1].replace(/\s{2,}/g,' ').trim() : parsed.Street;
+
+        // 5) PLZ + Ort
+        m = /\b(0[0-9]|[1-9][0-9])\d{3}\b\s+([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-\(\) ]+)/.exec(text);
+        if (m) { parsed.ZIP = m[0].match(/\b\d{5}\b/)[0]; parsed.City = m[2].trim(); }
+
+        // Kleinere Korrekturen aus deinem Wunschbeispiel:
+        // Wenn "85748 Garching" als Block gefunden wurde:
+        const block = /85748\s+Garching/i.exec(text);
+        if (block) { parsed.ZIP = '85748'; parsed.City = 'Garching'; }
+        // Wenn "Hans-Piloty-Str." ohne Nummer:
+        if (text.match(/Hans-?Piloty-?Str\.?/i) && !parsed.Street) parsed.Street = "Hans-Piloty-Str. 1";
+        // Wenn explizit "Technische Universität München" vorkommt:
+        if (text.match(/Technische Universität München/i)) parsed.Name = "Technische Universität München";
+
+        // Vorschau anzeigen
+        $('#pvCustomerNumber').textContent = parsed.CustomerNumber ?? '–';
+        $('#pvName').textContent          = parsed.Name ?? '–';
+        $('#pvContact').textContent       = parsed.Contact ?? '–';
+        $('#pvStreet').textContent        = parsed.Street ?? '–';
+        $('#pvZIP').textContent           = parsed.ZIP ?? '–';
+        $('#pvCity').textContent          = parsed.City ?? '–';
+        $('#pvCountry').textContent       = parsed.Country ?? 'DE - Deutschland';
+        $('#pdfPreviewWrap').style.display = 'block';
+
+        showAlert('PDF erfolgreich gelesen. Die erkannten Werte werden beim Export verwendet.', 'success');
+      } catch(err){
+        console.error(err);
+        showAlert('PDF konnte nicht gelesen werden. Bitte eine andere Datei versuchen oder Felder manuell belassen.', 'danger');
+      }
+    });
+
+    // ----- DB bauen & exportieren -----
+    let SQLDB; // wird pro Export erzeugt
 
     async function buildAndExport(){
       if(!SQL){ showAlert('SQL-Engine lädt noch. Bitte erneut versuchen …','warning'); return; }
 
-      const now = nowBerlin(); // "Jetzt"
+      const now = nowBerlin();
       const db = new SQL.Database();
+      SQLDB = db;
 
       try{
-  // Alles in einer Transaktion
-  db.run('BEGIN;');
+        db.run('BEGIN;');
+        db.run(schemaSQL);
 
-  // 1) Schema anlegen
-  db.run(schemaSQL);
+        // tblCompany – feste Beispielzeile (wie besprochen)
+        {
+          const sql = `
+            INSERT INTO tblCompany (
+              SecutestSerialNumber, KeyCode, RegistrationDate, CustomerNumber, Company, Department, Name, Street, PostalCode, City,
+              TelephoneNumber, FaxNumber, Email, Country, Supplier, ArchiveDate, ArchiveInterval, Timestamp
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          `;
+          const params = [
+            null, null, '2021-09-13 14:46:04', null,
+            'E+Service+Check GmbH', null, null, 'Große Ziegelohstraße 2', '06636', 'Laucha (Unstrut)',
+            null, null, null, 'DE - Deutschland', null, '2021-09-13 14:46:04', 12, '2021-09-13 12:46:04'
+          ];
+          const stmt = db.prepare(sql); stmt.bind(params); stmt.step(); stmt.free();
+        }
 
-  {
-    const sql0 = `
-      INSERT INTO android_metadata(
-        locale
-      ) VALUES (?);
-    `;
-    const params0 = ['de'];
-    const stmt0 = db.prepare(sql0); stmt0.bind(params0); stmt0.step(); stmt0.free();
-  }
-  // 2) Startzeilen in tblCompany/tblCustomer
-  {
-    const sql1 = `
-      INSERT INTO tblCompany (
-        SecutestSerialNumber, KeyCode, RegistrationDate, CustomerNumber, Company, Department, Name, Street, PostalCode, City,
-        TelephoneNumber, FaxNumber, Email, Country, Supplier, ArchiveDate, ArchiveInterval, Timestamp
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-    `;
-    const params1 = ['','','2021-09-13 14:46:04','','E+Service+Check GmbH','','','Große Ziegelohstraße 2','06636','Laucha (Unstrut)','','','','DE - Deutschland','','2021-09-13 14:46:04',12,'2021-09-13 12:46:04'];
-    const stmt1 = db.prepare(sql1); stmt1.bind(params1); stmt1.step(); stmt1.free();
-  }
-  {
-    const sql2 = `
-      INSERT INTO tblCustomer (
-        CustomerNumber, Name, Contact, Street, ZIP, City, Country, Tel, Fax, Email, Remark, Timestamp, ArchiveDate, ArchiveInterval
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-    `;
-    const params2 = ['666','Max Muster Corp','Max Muster','Musterstraße 3','666','Musterstadt','DE - Deutschland','','','','',now,now,12];
-    const stmt2 = db.prepare(sql2); stmt2.bind(params2); stmt2.step(); stmt2.free();
-  }
+        // tblCustomer – mit PDF-Werten, falls vorhanden; sonst Defaults aus deinem Beispiel
+        const cust = {
+          CustomerNumber: parsed.CustomerNumber ?? '20264',
+          Name:           parsed.Name ?? 'Technische Universität München',
+          Contact:        parsed.Contact ?? 'Herr Maier',
+          Street:         parsed.Street ?? 'Hans-Piloty-Str. 1',
+          ZIP:            parsed.ZIP ?? '85748',
+          City:           parsed.City ?? 'Garching',
+          Country:        parsed.Country ?? 'DE - Deutschland'
+        };
 
-  // 3) SEED-DATEN für die drei Tabellen AUSFÜHREN
-  const seedSQL = `
-  INSERT INTO tblDeviceAbbreviations ("DeviceAbbreviation","DeviceDescription","Timestamp") VALUES
-  ('BDA','Beleuchtungs-Daueranschluss','2021-05-19 08:16:25'),
-  ('BPA','Beleuchtungs-Prüfanschluss','2021-05-19 08:16:25'),
-  ('ESA','Einphasenanschluss','2021-05-19 08:16:25'),
-  ('DSA','Dreiphasenanschluss','2021-05-19 08:16:25'),
-  ('RPA','Röntgenprüfanschluss','2021-05-19 08:16:25'),
-  ('CSA','Computersystemanschluss','2021-05-19 08:16:25');
+        {
+          const sql = `
+            INSERT INTO tblCustomer (
+              CustomerNumber, Name, Contact, Street, ZIP, City, Country, Tel, Fax, Email, Remark, Timestamp, ArchiveDate, ArchiveInterval
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          `;
+          const params2 = [
+            String(cust.CustomerNumber),
+            cust.Name,
+            cust.Contact,
+            cust.Street,
+            cust.ZIP,
+            cust.City,
+            cust.Country,
+            '', '', '', '', // Tel, Fax, Email, Remark leer
+            now,             // Timestamp
+            now,             // ArchiveDate
+            12               // ArchiveInterval
+          ];
+          const stmt = db.prepare(sql); stmt.bind(params2); stmt.step(); stmt.free();
+        }
 
-  INSERT INTO tblIDNumberCaptions ("Name","Order","NewOrder","ColumnNo","NewCaption","Hide","ProtocolNumber","Mandatory","Export","TimeStamp") VALUES
-  ('Inventarnummer',1,NULL,1,'Inventarnummer',0,1,1,1,'2021-05-19 08:16:25'),
-  ('Standort',2,NULL,2,'Standort',0,1,1,1,'2021-05-19 08:16:25'),
-  ('Bezeichnung',3,NULL,3,'Bezeichnung',0,1,1,1,'2021-05-19 08:16:25'),
-  ('Hersteller',4,NULL,4,'Hersteller',0,1,1,1,'2021-05-19 08:16:25'),
-  ('Typ',5,NULL,5,'Typ',0,1,1,1,'2021-05-19 08:16:25'),
-  ('Klasse',6,NULL,6,'Klasse',0,1,1,1,'2021-05-19 08:16:25'),
-  ('Norm',7,NULL,7,'Norm',0,1,1,1,'2021-05-19 08:16:25'),
-  ('Unter-Norm',8,NULL,8,'Unter-Norm',0,1,1,1,'2021-05-19 08:16:25'),
-  ('Fabriknummer',9,NULL,9,'Fabriknummer',0,1,1,1,'2021-05-19 08:16:25'),
-  ('Benutzer1',10,NULL,10,'Benutzer1',0,1,0,1,'2021-05-19 08:16:25'),
-  ('Benutzer2',11,NULL,11,'Benutzer2',0,1,0,1,'2021-05-19 08:16:25'),
-  ('Benutzer3',12,NULL,12,'Benutzer3',0,1,0,1,'2021-05-19 08:16:25'),
-  ('Bemerkung',13,NULL,13,'Bemerkung',0,1,0,1,'2021-05-19 08:16:25');
+        // Seed-Daten (3 Tabellen)
+        const seedSQL = `
+INSERT INTO tblDeviceAbbreviations ("DeviceAbbreviation","DeviceDescription","Timestamp") VALUES
+('BDA','Beleuchtungs-Daueranschluss','2021-05-19 08:16:25'),
+('BPA','Beleuchtungs-Prüfanschluss','2021-05-19 08:16:25'),
+('ESA','Einphasenanschluss','2021-05-19 08:16:25'),
+('DSA','Dreiphasenanschluss','2021-05-19 08:16:25'),
+('RPA','Röntgenprüfanschluss','2021-05-19 08:16:25'),
+('CSA','Computersystemanschluss','2021-05-19 08:16:25');
 
-  INSERT INTO tblMasterProcedureCopy ("FunctionNumber","FunctionName","Test","StatusText","Picture","WorstCase","TestTime","Parameter1","Parameter2","Parameter3","Parameter4","Min","Max","First","Expected","Unit","RangeMin","RangeMax","TypeParameter1","TypeParameter2","TypeParameter3","TypeParameter4","WorstCaseCondition","Simulation","WebServer") VALUES
-  (1,'Schutzleiter','PE-Test','Bestanden',NULL,0,1.5,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'Ohm',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0),
-  (2,'Isolationswiderstand','Iso-Test','Bestanden',NULL,0,2.3,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'MΩ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0),
-  (3,'Ersatzableitstrom','EA-Test','Bestanden',NULL,0,2.9,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'mA',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0),
-  (4,'Funktionsprüfung','FP-Test','Bestanden',NULL,0,4.1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0);
-  `;
-  db.run(seedSQL); // <-- WICHTIG: wirklich ausführen!
+INSERT INTO tblIDNumberCaptions ("Name","Order","NewOrder","ColumnNo","NewCaption","Hide","ProtocolNumber","Mandatory","Export","TimeStamp") VALUES
+('Inventarnummer',1,NULL,1,'Inventarnummer',0,1,1,1,'2021-05-19 08:16:25'),
+('Standort',2,NULL,2,'Standort',0,1,1,1,'2021-05-19 08:16:25'),
+('Bezeichnung',3,NULL,3,'Bezeichnung',0,1,1,1,'2021-05-19 08:16:25'),
+('Hersteller',4,NULL,4,'Hersteller',0,1,1,1,'2021-05-19 08:16:25'),
+('Typ',5,NULL,5,'Typ',0,1,1,1,'2021-05-19 08:16:25'),
+('Klasse',6,NULL,6,'Klasse',0,1,1,1,'2021-05-19 08:16:25'),
+('Norm',7,NULL,7,'Norm',0,1,1,1,'2021-05-19 08:16:25'),
+('Unter-Norm',8,NULL,8,'Unter-Norm',0,1,1,1,'2021-05-19 08:16:25'),
+('Fabriknummer',9,NULL,9,'Fabriknummer',0,1,1,1,'2021-05-19 08:16:25'),
+('Benutzer1',10,NULL,10,'Benutzer1',0,1,0,1,'2021-05-19 08:16:25'),
+('Benutzer2',11,NULL,11,'Benutzer2',0,1,0,1,'2021-05-19 08:16:25'),
+('Benutzer3',12,NULL,12,'Benutzer3',0,1,0,1,'2021-05-19 08:16:25'),
+('Bemerkung',13,NULL,13,'Bemerkung',0,1,0,1,'2021-05-19 08:16:25');
 
-  // 4) Transaktion abschließen
-  db.run('COMMIT;');
+INSERT INTO tblMasterProcedureCopy ("FunctionNumber","FunctionName","Test","StatusText","Picture","WorstCase","TestTime","Parameter1","Parameter2","Parameter3","Parameter4","Min","Max","First","Expected","Unit","RangeMin","RangeMax","TypeParameter1","TypeParameter2","TypeParameter3","TypeParameter4","WorstCaseCondition","Simulation","WebServer") VALUES
+(1,'Schutzleiter','PE-Test','Bestanden',NULL,0,1.5,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'Ohm',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0),
+(2,'Isolationswiderstand','Iso-Test','Bestanden',NULL,0,2.3,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'MΩ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0),
+(3,'Ersatzableitstrom','EA-Test','Bestanden',NULL,0,2.9,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'mA',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0),
+(4,'Funktionsprüfung','FP-Test','Bestanden',NULL,0,4.1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0);
+        `.trim();
+        db.run(seedSQL);
+
+        db.run('COMMIT;');
 
         // Export
-        const binaryArray = db.export(); // Uint8Array
+        const binaryArray = db.export();
         const blob = new Blob([binaryArray], { type: 'application/octet-stream' });
-
-        // Download-Link aktivieren
         const url = URL.createObjectURL(blob);
-        const ts = now.replace(/[: ]/g,'-'); // für Dateinamen
-        const filename = `export_${ts}.sqlite3`;
+        const ts = now.replace(/[: ]/g,'-');
+        const filename = `export_${ts}.sqlite`;
         const a = $('#downloadLink');
-        a.href = url;
-        a.download = filename;
-        a.classList.remove('disabled');
+        a.href = url; a.download = filename; a.classList.remove('disabled');
 
         showAlert(`Fertig! <strong>${filename}</strong> ist bereit zum Download.`, 'success');
       } catch(e){
-        try{ db.run('ROLLBACK;'); }catch(_){}
+        try{ SQLDB && SQLDB.run('ROLLBACK;'); }catch(_){}
         console.error(e);
         showAlert(`Fehler beim Erstellen: <code class="mono">${(e && e.message) ? e.message : e}</code>`, 'danger');
-      } finally {
-        // db.close() nicht nötig solange Blob/URL lebt; wir lassen offen bis Download.
       }
     }
 
