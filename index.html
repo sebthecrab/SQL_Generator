@@ -2,323 +2,441 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SQLite Generator – v05 (Mobile-First, Bootstrap 5.3, sql.js)</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SQLite3-Exporter – Mobile First (Bootstrap + sql.js)</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    :root { --maxw: 900px; }
+    :root { --maxw: 980px; }
     body { background: #f8fafc; }
-    .page { max-width: var(--maxw); margin: 0 auto; padding: 1rem; }
+    .container-narrow { max-width: var(--maxw); }
     .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
-    .sticky-footer { position: sticky; bottom: 0; background: #fff; border-top: 1px solid #e5e7eb; }
-    pre { white-space: pre-wrap; word-wrap: break-word; }
+    .card { border-radius: 1rem; }
+    .small-muted { color:#6b7280; font-size:.9rem; }
+    .req::after { content:" *"; color:#dc3545; }
+    .sticky-footer { position:sticky; bottom:0; z-index:5; background:#fff; border-top:1px solid #e5e7eb; }
   </style>
 </head>
 <body>
-  <main class="page">
-    <header class="mb-3">
-      <h1 class="h4 mb-1">SQLite3 erstellen (v05)</h1>
-      <p class="text-muted mb-0">Erzeugt eine SQLite-Datei mit deinen Tabellen (Client-Only, keine Servercalls).</p>
-    </header>
+  <header class="bg-white border-bottom">
+    <div class="container container-narrow py-3 d-flex align-items-center justify-content-between">
+      <h1 class="h5 mb-0">SQLite3-Exporter (Client-only)</h1>
+      <span class="badge text-bg-light">Bootstrap 5 · sql.js (WASM)</span>
+    </div>
+  </header>
 
-    <section class="card mb-3">
+  <main class="container container-narrow my-4">
+    <div class="card shadow-sm mb-3">
       <div class="card-body">
-        <div class="d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between">
-          <div>
-            <div class="fw-semibold">Ausgabe</div>
-            <div class="text-muted small">Dateiname &amp; optional lokales <span class="code">android_metadata.locale</span></div>
+        <h2 class="h6">Allgemeine Einstellungen</h2>
+        <div class="row g-3">
+          <div class="col-12 col-sm-6">
+            <label class="form-label req">Dateiname (ohne Endung)</label>
+            <input id="dbName" class="form-control" placeholder="my_database" value="export" />
+            <div class="form-text">Die Datei wird als <span class="code">.sqlite3</span> heruntergeladen.</div>
           </div>
-          <div class="w-100 w-md-auto d-grid gap-2 gap-md-3" style="grid-template-columns: 1fr; }
-">
-            <div class="input-group">
-              <span class="input-group-text">Datei</span>
-              <input id="outName" type="text" class="form-control" value="generated_db.sqlite" />
-            </div>
-            <div class="input-group">
-              <span class="input-group-text">android_metadata.locale</span>
-              <input id="androidLocale" type="text" class="form-control" placeholder="z. B. de_DE (optional)" />
-            </div>
+          <div class="col-12 col-sm-6">
+            <label class="form-label req">android_metadata.locale</label>
+            <input id="locale" class="form-control" placeholder="de_DE" value="de_DE" />
+            <div class="form-text">Wird in <span class="code">android_metadata(locale)</span> eingetragen.</div>
           </div>
         </div>
-        <div class="d-flex flex-wrap gap-2 mt-3">
-          <button id="btnBuild" class="btn btn-primary">Datenbank erzeugen</button>
-          <button id="btnDownload" class="btn btn-success" disabled>Herunterladen</button>
-          <button id="btnShowSchema" class="btn btn-outline-secondary">Schema anzeigen</button>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <h2 class="h6">tblCompany – Erster Datensatz</h2>
+        <div class="row g-3">
+          <div class="col-12 col-md-6">
+            <label class="form-label">SecutestSerialNumber</label>
+            <input id="company_SecutestSerialNumber" class="form-control" />
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label">KeyCode1</label>
+            <input id="company_KeyCode1" class="form-control" />
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label">RegistrationDate1</label>
+            <input id="company_RegistrationDate1" class="form-control" value="2021-09-13 14:46:04" />
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label">CustomerNumber</label>
+            <input id="company_CustomerNumber" class="form-control" />
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="form-label req">Company</label>
+            <input id="company_Company" class="form-control" value="E+Service+Check GmbH" />
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label">Department</label>
+            <input id="company_Department" class="form-control" />
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="form-label">Name</label>
+            <input id="company_Name" class="form-control" />
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label">Street</label>
+            <input id="company_Street" class="form-control" value="Große Ziegelohstraße 2" />
+          </div>
+
+          <div class="col-6 col-md-3">
+            <label class="form-label">PostalCode</label>
+            <input id="company_PostalCode" class="form-control" value="06636" />
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label">City</label>
+            <input id="company_City" class="form-control" value="Laucha (Unstrut)" />
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label">TelephoneNumber</label>
+            <input id="company_TelephoneNumber" class="form-control" />
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label">FaxNumber</label>
+            <input id="company_FaxNumber" class="form-control" />
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="form-label">Email</label>
+            <input id="company_Email" class="form-control" />
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label">Country</label>
+            <input id="company_Country" class="form-control" value="DE - Deutschland" />
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="form-label">Supplier</label>
+            <input id="company_Supplier" class="form-control" />
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label">ArchiveDate</label>
+            <input id="company_ArchiveDate" class="form-control" value="2021-09-13 14:46:04" />
+          </div>
+
+          <div class="col-6 col-md-3">
+            <label class="form-label">ArchiveInterval</label>
+            <input id="company_ArchiveInterval" class="form-control" value="12" />
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label">Timestamp</label>
+            <input id="company_Timestamp" class="form-control" value="2021-09-13 12:46:04" />
+          </div>
         </div>
-        <div id="status" class="mt-3 small text-muted">Bereit.</div>
       </div>
-    </section>
+    </div>
 
-    <section class="card mb-3 d-none" id="schemaCard">
-      <div class="card-header d-flex align-items-center justify-content-between">
-        <span class="fw-semibold">Erzeugtes Schema (SQL)</span>
-        <button id="btnCopySchema" class="btn btn-sm btn-outline-secondary">In Zwischenablage</button>
-      </div>
+    <div class="card shadow-sm mb-3">
       <div class="card-body">
-        <pre class="code mb-0" id="schemaSql"></pre>
+        <h2 class="h6">Tabellenübersicht (Schema, ohne Datentyp-Zwänge)</h2>
+        <p class="small-muted mb-2">
+          Es werden alle von dir genannten Tabellen angelegt. Für Felder nutze ich standardmäßig
+          <span class="code">TEXT</span> (kompatibel & flexibel); du kannst später bei Bedarf Typen verengen.
+        </p>
+        <ul class="small">
+          <li><span class="code">android_metadata(locale)</span> (mit Eintrag)</li>
+          <li><span class="code">tblCompany</span> (mit deinem ersten Datensatz)</li>
+          <li><span class="code">tblCustomer, tblDeviceAbbreviations, tblIDNumberCaptions, tblIDNumbers, tblMasterProcedureCopy, tblResults, tblResultsHeader</span> (leer)</li>
+          <li><span class="code">tblSecutestRegistration, tblVisInspectionWeldingHeader, tblVisInspectionWeldingResults</span> – da keine Spalten angegeben waren, lege ich jeweils
+            <span class="code">id INTEGER PRIMARY KEY, data TEXT</span> an (neutral & erweiterbar).
+          </li>
+        </ul>
       </div>
-    </section>
+    </div>
 
-    <section class="card">
-      <div class="card-body">
-        <h2 class="h6">Was wird erstellt?</h2>
-        <ol class="mb-0">
-          <li><span class="code">android_metadata</span> mit Spalte <span class="code">locale</span> (optional mit deinem Wert) und einer sichtbaren Primärschlüssel-Spalte <span class="code">__rowid__</span>.</li>
-          <li>Alle gewünschten Tabellen mit einer expliziten Spalte <span class="code">"__rowid__ INTEGER PRIMARY KEY"</span>, damit sie in Tools sichtbar ist.</li>
-          <li><span class="code">tblCompany</span> erhält die von dir angegebene erste Zeile (Datums-/Zeitwerte wie vorgegeben).</li>
-          <li><span class="code">tblSecutestRegistration</span>, <span class="code">tblVisInspectionWeldingHeader</span>, <span class="code">tblVisInspectionWeldingResults</span> werden als leere Tabellen mit <span class="code">__rowid__</span> angelegt (da keine Spalten angegeben).</li>
-        </ol>
-        <p class="small text-muted mt-2 mb-0">Hinweis: Datentypen sind bewusst generisch (TEXT). Du kannst sie später bei Bedarf verfeinern.</p>
-      </div>
-    </section>
+    <div class="d-grid gap-2">
+      <button id="btnMake" class="btn btn-primary btn-lg">SQLite erstellen & herunterladen</button>
+      <div id="msg" class="mt-2 small"></div>
+    </div>
   </main>
 
-  <div class="sticky-footer">
-    <div class="page py-2 d-flex gap-2 align-items-center justify-content-between">
-      <span class="small text-muted">Bootstrap 5.3 • sql.js (WASM) • Mobile-First</span>
+  <footer class="sticky-footer py-2">
+    <div class="container container-narrow d-flex justify-content-between align-items-center">
+      <span class="small-muted">Alles passiert lokal in deinem Browser.</span>
       <a class="small" href="https://github.com/sql-js/sql.js" target="_blank" rel="noopener">sql.js Projekt</a>
     </div>
-  </div>
+  </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
   <script>
-    // --- State ---
+    const $ = (s) => document.querySelector(s);
+
     let SQL = null;
-    let db = null;
-    let built = false;
 
-    const $ = s => document.querySelector(s);
-
-    (async () => {
-      setStatus('Lade SQL-Engine …');
+    (async function init() {
       SQL = await initSqlJs({
         locateFile: file => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/' + file
       });
-      setStatus('Bereit.');
     })();
 
-    $('#btnBuild').addEventListener('click', buildDatabase);
-    $('#btnDownload').addEventListener('click', downloadDb);
-    $('#btnShowSchema').addEventListener('click', () => {
-      const card = $('#schemaCard');
-      card.classList.toggle('d-none');
-    });
-    $('#btnCopySchema').addEventListener('click', async () => {
-      const txt = $('#schemaSql').textContent;
+    function msg(html, type='secondary') {
+      $('#msg').innerHTML = '<div class="alert alert-' + type + ' mb-0">' + html + '</div>';
+    }
+
+    // --- Schema (CREATE TABLE) ---
+    // Alle Spalten als TEXT, falls nicht anders vorgegeben. Primärschlüssel / Indizes kannst du später ergänzen.
+    const schemaSQL = `
+CREATE TABLE IF NOT EXISTS android_metadata (
+  locale TEXT
+);
+
+CREATE TABLE IF NOT EXISTS tblCompany (
+  SecutestSerialNumber TEXT,
+  KeyCode1 TEXT,
+  RegistrationDate1 TEXT,
+  CustomerNumber TEXT,
+  Company TEXT,
+  Department TEXT,
+  Name TEXT,
+  Street TEXT,
+  PostalCode TEXT,
+  City TEXT,
+  TelephoneNumber TEXT,
+  FaxNumber TEXT,
+  Email TEXT,
+  Country TEXT,
+  Supplier TEXT,
+  ArchiveDate TEXT,
+  ArchiveInterval TEXT,
+  Timestamp TEXT
+);
+
+CREATE TABLE IF NOT EXISTS tblCustomer (
+  CustomerNumber1 TEXT,
+  Name TEXT,
+  Contact TEXT,
+  Street TEXT,
+  ZIP TEXT,
+  City TEXT,
+  Country TEXT,
+  Tel TEXT,
+  Fax TEXT,
+  Email TEXT,
+  Remark TEXT,
+  Timestamp TEXT,
+  ArchiveDate TEXT
+);
+
+CREATE TABLE IF NOT EXISTS tblDeviceAbbreviations (
+  DeviceAbbreviation TEXT,
+  DeviceDescription1 TEXT,
+  Timestamp TEXT
+);
+
+CREATE TABLE IF NOT EXISTS tblIDNumberCaptions (
+  Name TEXT,
+  "Order" TEXT,
+  NewOrder TEXT,
+  ColumnNo TEXT,
+  NewCaption1 TEXT,
+  Hide TEXT,
+  ProtocolNumber TEXT,
+  Mandatory TEXT,
+  Export TEXT,
+  TimeStamp TEXT
+);
+
+CREATE TABLE IF NOT EXISTS tblIDNumbers (
+  ProcedureName TEXT,
+  CustomerNumber TEXT,
+  IDNumber TEXT,
+  Location TEXT,
+  DeviceDescription TEXT,
+  Manufacturer TEXT,
+  Type TEXT,
+  Class TEXT,
+  Standard TEXT,
+  SubStandard TEXT,
+  FactoryNumber TEXT,
+  User1 TEXT,
+  User2 TEXT,
+  User3 TEXT,
+  Remark TEXT,
+  TestInterval TEXT,
+  ProtocolForm TEXT,
+  CableLength TEXT,
+  CableCrossection TEXT,
+  HeatingPower TEXT,
+  Power TEXT,
+  OCVoltage TEXT,
+  AppliedParts TEXT,
+  RCDType TEXT,
+  RCDIDN TEXT,
+  IsolatedParts TEXT,
+  PEParts TEXT,
+  PETest TEXT,
+  InsulationTest1 TEXT,
+  CurrentClamp TEXT,
+  PRCDS TEXT,
+  ELV TEXT,
+  ELVTest TEXT,
+  SurgeArrestor TEXT,
+  Wiring TEXT,
+  Pictures TEXT,
+  LastTest TEXT,
+  TestResult TEXT,
+  NextTest TEXT,
+  Hyperlink TEXT,
+  Status TEXT,
+  Remark2 TEXT,
+  TestNumber TEXT,
+  Timestamp TEXT
+);
+
+CREATE TABLE IF NOT EXISTS tblMasterProcedureCopy (
+  Parameter1 TEXT,
+  Parameter2 TEXT,
+  Parameter3 TEXT,
+  Parameter4 TEXT,
+  Min TEXT,
+  Max TEXT,
+  First TEXT,
+  Expected TEXT,
+  Unit TEXT,
+  RangeMin TEXT,
+  RangeMax TEXT,
+  TypeParameter1 TEXT,
+  TypeParameter2 TEXT,
+  TypeParameter3 TEXT,
+  TypeParameter4 TEXT,
+  WorstCaseCondition TEXT,
+  Simulation TEXT,
+  WebServer TEXT
+);
+
+CREATE TABLE IF NOT EXISTS tblResults (
+  ProcedureName TEXT,
+  CustomerNumber TEXT,
+  IDNumber TEXT,
+  TestNumber TEXT,
+  ResultNumber TEXT,
+  ProcedureStepNumber1 TEXT,
+  FunctionName TEXT,
+  Picture TEXT,
+  Remark TEXT,
+  Protocol TEXT,
+  WorstCase TEXT,
+  TestTime TEXT,
+  Parameter1 TEXT,
+  Parameter2 TEXT,
+  Parameter3 TEXT,
+  Parameter4 TEXT,
+  Min TEXT,
+  Max TEXT,
+  First TEXT,
+  Expected TEXT,
+  Result TEXT,
+  OK TEXT
+);
+
+CREATE TABLE IF NOT EXISTS tblResultsHeader (
+  ProcedureName TEXT,
+  CustomerNumber TEXT,
+  IDNumber TEXT,
+  TestNumber TEXT,
+  OrderNumber TEXT,
+  Remark TEXT,
+  TestDate TEXT,
+  TestResult TEXT,
+  TestingPerson TEXT,
+  Pictures TEXT,
+  SecutestIDString TEXT,
+  SoftwareVersion TEXT,
+  SecutestSoftwareVersion TEXT,
+  TesterSerialNumber TEXT,
+  LineVoltage TEXT,
+  Protocol TEXT,
+  Timestamp TEXT
+);
+
+/* Für die drei Tabellen ohne definierte Spalten lege ich neutrale Felder an:
+   - id: künstlicher PK (optional nutzbar)
+   - data: JSON/Text-Payload für flexible Inhalte
+   Das ist die sicherste Option, solange das Zielschema unbekannt ist. */
+CREATE TABLE IF NOT EXISTS tblSecutestRegistration (
+  id INTEGER PRIMARY KEY,
+  data TEXT
+);
+CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingHeader (
+  id INTEGER PRIMARY KEY,
+  data TEXT
+);
+CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
+  id INTEGER PRIMARY KEY,
+  data TEXT
+);
+`.trim();
+
+    // Erst-Datensatz für tblCompany aus den Formularfeldern
+    function companyRowFromForm() {
+      const get = id => $(id).value || null;
+      return {
+        SecutestSerialNumber: get('#company_SecutestSerialNumber'),
+        KeyCode1:              get('#company_KeyCode1'),
+        RegistrationDate1:     get('#company_RegistrationDate1'),
+        CustomerNumber:        get('#company_CustomerNumber'),
+        Company:               get('#company_Company'),
+        Department:            get('#company_Department'),
+        Name:                  get('#company_Name'),
+        Street:                get('#company_Street'),
+        PostalCode:            get('#company_PostalCode'),
+        City:                  get('#company_City'),
+        TelephoneNumber:       get('#company_TelephoneNumber'),
+        FaxNumber:             get('#company_FaxNumber'),
+        Email:                 get('#company_Email'),
+        Country:               get('#company_Country'),
+        Supplier:              get('#company_Supplier'),
+        ArchiveDate:           get('#company_ArchiveDate'),
+        ArchiveInterval:       get('#company_ArchiveInterval'),
+        Timestamp:             get('#company_Timestamp')
+      };
+    }
+
+    async function makeAndDownload() {
       try {
-        await navigator.clipboard.writeText(txt);
-        setStatus('Schema kopiert.');
-      } catch { setStatus('Kopieren nicht möglich (Berechtigung).'); }
-    });
+        msg('Erzeuge Datenbank …', 'info');
 
-    function setStatus(msg) { $('#status').textContent = msg; }
+        const db = new SQL.Database();
 
-    function buildDatabase() {
-      if (!SQL) { setStatus('Engine noch nicht bereit.'); return; }
-      if (db) { try { db.close(); } catch {} db = null; }
-      db = new SQL.Database();
+        // Schema anlegen
+        db.run(schemaSQL);
 
-      // --- Schema (CREATE TABLE) ---
-      const schemaStmts = [];
+        // android_metadata einfügen
+        const locale = ($('#locale').value || 'de_DE').trim();
+        db.run('DELETE FROM android_metadata;'); // idempotent
+        const stmtMeta = db.prepare('INSERT INTO android_metadata(locale) VALUES (?);');
+        stmtMeta.bind([locale]); stmtMeta.step(); stmtMeta.free();
 
-      // Helper to push and run
-      function run(sql, params) {
-        schemaStmts.push(sql.trim() + (sql.trim().endsWith(';') ? '' : ';'));
-        if (params && params.length) {
-          const stmt = db.prepare(sql);
-          stmt.bind(params);
-          while (stmt.step()) {}
-          stmt.free();
-        } else {
-          db.run(sql);
-        }
+        // Erster Datensatz tblCompany
+        const row = companyRowFromForm();
+        const cols = Object.keys(row);
+        const vals = cols.map(c => row[c]);
+        const placeholders = cols.map(_=>'?').join(', ');
+        const sqlIns = `INSERT INTO tblCompany(${cols.map(c => '"'+c+'"').join(', ')}) VALUES (${placeholders});`;
+        const stmtComp = db.prepare(sqlIns);
+        stmtComp.bind(vals); stmtComp.step(); stmtComp.free();
+
+        // Export
+        const bin = db.export();
+        const blob = new Blob([bin], { type: 'application/octet-stream' });
+        const a = document.createElement('a');
+        const name = ($('#dbName').value || 'export').replace(/[^a-z0-9_\-]+/gi,'_');
+        a.href = URL.createObjectURL(blob);
+        a.download = name + '.sqlite3';
+        a.click();
+        URL.revokeObjectURL(a.href);
+
+        msg('Fertig! Die Datei wurde heruntergeladen.', 'success');
+      } catch (e) {
+        console.error(e);
+        msg('Fehler: ' + (e?.message || e), 'danger');
       }
-
-      // 1) android_metadata
-      run(`
-        CREATE TABLE IF NOT EXISTS "android_metadata" (
-          "__rowid__" INTEGER PRIMARY KEY,
-          "locale" TEXT
-        )
-      `);
-
-      const androidLocale = ($('#androidLocale').value || '').trim();
-      if (androidLocale) {
-        run(`INSERT INTO "android_metadata" ("__rowid__","locale") VALUES (?,?);`, [1, androidLocale]);
-      }
-
-      // 2) tblCompany (mit gewünschter erster Zeile)
-      run(`
-        CREATE TABLE IF NOT EXISTS "tblCompany" (
-          "__rowid__" INTEGER PRIMARY KEY,
-          "SecutestSerialNumber" TEXT,
-          "KeyCode1" TEXT,
-          "RegistrationDate1" TEXT,
-          "CustomerNumber" TEXT,
-          "Company" TEXT,
-          "Department" TEXT,
-          "Name" TEXT,
-          "Street" TEXT,
-          "PostalCode" TEXT,
-          "City" TEXT,
-          "TelephoneNumber" TEXT,
-          "FaxNumber" TEXT,
-          "Email" TEXT,
-          "Country" TEXT,
-          "Supplier" TEXT,
-          "ArchiveDate" TEXT,
-          "ArchiveInterval" TEXT,
-          "Timestamp" TEXT
-        )
-      `);
-
-      // Eintrag gemäß Vorgabe
-      run(`
-        INSERT INTO "tblCompany" (
-          "__rowid__", "SecutestSerialNumber","KeyCode1","RegistrationDate1","CustomerNumber","Company",
-          "Department","Name","Street","PostalCode","City","TelephoneNumber","FaxNumber","Email","Country",
-          "Supplier","ArchiveDate","ArchiveInterval","Timestamp"
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-      `, [
-        1,
-        null, // SecutestSerialNumber
-        null, // KeyCode1
-        "2021-09-13 14:46:04",
-        null, // CustomerNumber
-        "E+Service+Check GmbH",
-        null, // Department
-        null, // Name
-        "Große Ziegelohstraße 2",
-        "06636",
-        "Laucha (Unstrut)",
-        null, // TelephoneNumber
-        null, // FaxNumber
-        null, // Email
-        "DE - Deutschland",
-        null, // Supplier
-        "2021-09-13 14:46:04",
-        "12",
-        "2021-09-13 12:46:04"
-      ]);
-
-      // 3) tblCustomer
-      run(`
-        CREATE TABLE IF NOT EXISTS "tblCustomer" (
-          "__rowid__" INTEGER PRIMARY KEY,
-          "CustomerNumber1" TEXT, "Name" TEXT, "Contact" TEXT, "Street" TEXT, "ZIP" TEXT, "City" TEXT,
-          "Country" TEXT, "Tel" TEXT, "Fax" TEXT, "Email" TEXT, "Remark" TEXT, "Timestamp" TEXT, "ArchiveDate" TEXT
-        )
-      `);
-
-      // 4) tblDeviceAbbreviations
-      run(`
-        CREATE TABLE IF NOT EXISTS "tblDeviceAbbreviations" (
-          "__rowid__" INTEGER PRIMARY KEY,
-          "DeviceAbbreviation" TEXT, "DeviceDescription1" TEXT, "Timestamp" TEXT
-        )
-      `);
-
-      // 5) tblIDNumberCaptions
-      run(`
-        CREATE TABLE IF NOT EXISTS "tblIDNumberCaptions" (
-          "__rowid__" INTEGER PRIMARY KEY,
-          "Name" TEXT, "Order" TEXT, "NewOrder" TEXT, "ColumnNo" TEXT, "NewCaption1" TEXT, "Hide" TEXT,
-          "ProtocolNumber" TEXT, "Mandatory" TEXT, "Export" TEXT, "TimeStamp" TEXT
-        )
-      `);
-
-      // 6) tblIDNumbers
-      run(`
-        CREATE TABLE IF NOT EXISTS "tblIDNumbers" (
-          "__rowid__" INTEGER PRIMARY KEY,
-          "ProcedureName" TEXT, "CustomerNumber" TEXT, "IDNumber" TEXT, "Location" TEXT, "DeviceDescription" TEXT,
-          "Manufacturer" TEXT, "Type" TEXT, "Class" TEXT, "Standard" TEXT, "SubStandard" TEXT, "FactoryNumber" TEXT,
-          "User1" TEXT, "User2" TEXT, "User3" TEXT, "Remark" TEXT, "TestInterval" TEXT, "ProtocolForm" TEXT,
-          "CableLength" TEXT, "CableCrossection" TEXT, "HeatingPower" TEXT, "Power" TEXT, "OCVoltage" TEXT,
-          "AppliedParts" TEXT, "RCDType" TEXT, "RCDIDN" TEXT, "IsolatedParts" TEXT, "PEParts" TEXT, "PETest" TEXT,
-          "InsulationTest1" TEXT, "CurrentClamp" TEXT, "PRCDS" TEXT, "ELV" TEXT, "ELVTest" TEXT, "SurgeArrestor" TEXT,
-          "Wiring" TEXT, "Pictures" TEXT, "LastTest" TEXT, "TestResult" TEXT, "NextTest" TEXT, "Hyperlink" TEXT,
-          "Status" TEXT, "Remark2" TEXT, "TestNumber" TEXT, "Timestamp" TEXT
-        )
-      `);
-
-      // 7) tblMasterProcedureCopy (ohne __rowid__ gefordert? – wir fügen es konsistent hinzu)
-      run(`
-        CREATE TABLE IF NOT EXISTS "tblMasterProcedureCopy" (
-          "__rowid__" INTEGER PRIMARY KEY,
-          "Parameter1" TEXT, "Parameter2" TEXT, "Parameter3" TEXT, "Parameter4" TEXT,
-          "Min" TEXT, "Max" TEXT, "First" TEXT, "Expected" TEXT, "Unit" TEXT,
-          "RangeMin" TEXT, "RangeMax" TEXT,
-          "TypeParameter1" TEXT, "TypeParameter2" TEXT, "TypeParameter3" TEXT, "TypeParameter4" TEXT,
-          "WorstCaseCondition" TEXT, "Simulation" TEXT, "WebServer" TEXT
-        )
-      `);
-
-      // 8) tblResults
-      run(`
-        CREATE TABLE IF NOT EXISTS "tblResults" (
-          "__rowid__" INTEGER PRIMARY KEY,
-          "ProcedureName" TEXT, "CustomerNumber" TEXT, "IDNumber" TEXT, "TestNumber" TEXT, "ResultNumber" TEXT,
-          "ProcedureStepNumber1" TEXT, "FunctionName" TEXT, "Picture" TEXT, "Remark" TEXT, "Protocol" TEXT,
-          "WorstCase" TEXT, "TestTime" TEXT,
-          "Parameter1" TEXT, "Parameter2" TEXT, "Parameter3" TEXT, "Parameter4" TEXT,
-          "Min" TEXT, "Max" TEXT, "First" TEXT, "Expected" TEXT, "Result" TEXT, "OK" TEXT
-        )
-      `);
-
-      // 9) tblResultsHeader
-      run(`
-        CREATE TABLE IF NOT EXISTS "tblResultsHeader" (
-          "__rowid__" INTEGER PRIMARY KEY,
-          "ProcedureName" TEXT, "CustomerNumber" TEXT, "IDNumber" TEXT, "TestNumber" TEXT, "OrderNumber" TEXT,
-          "Remark" TEXT, "TestDate" TEXT, "TestResult" TEXT, "TestingPerson" TEXT, "Pictures" TEXT,
-          "SecutestIDString" TEXT, "SoftwareVersion" TEXT, "SecutestSoftwareVersion" TEXT, "TesterSerialNumber" TEXT,
-          "LineVoltage" TEXT, "Protocol" TEXT, "Timestamp" TEXT
-        )
-      `);
-
-      // 10) tblSecutestRegistration (keine Spalten vorgegeben -> minimal mit __rowid__)
-      run(`
-        CREATE TABLE IF NOT EXISTS "tblSecutestRegistration" (
-          "__rowid__" INTEGER PRIMARY KEY
-        )
-      `);
-
-      // 11) tblVisInspectionWeldingHeader (keine Spalten vorgegeben -> minimal)
-      run(`
-        CREATE TABLE IF NOT EXISTS "tblVisInspectionWeldingHeader" (
-          "__rowid__" INTEGER PRIMARY KEY
-        )
-      `);
-
-      // 12) tblVisInspectionWeldingResults (keine Spalten vorgegeben -> minimal)
-      run(`
-        CREATE TABLE IF NOT EXISTS "tblVisInspectionWeldingResults" (
-          "__rowid__" INTEGER PRIMARY KEY
-        )
-      `);
-
-      built = true;
-      $('#btnDownload').disabled = false;
-      setStatus('Datenbank im Speicher erstellt. Du kannst sie jetzt herunterladen.');
-
-      // Schema anzeigen
-      $('#schemaSql').textContent = schemaStmts.join('\n');
-      $('#schemaCard').classList.remove('d-none');
     }
 
-    function downloadDb() {
-      if (!db || !built) { setStatus('Bitte zuerst erzeugen.'); return; }
-      const outName = ($('#outName').value || 'generated_db.sqlite').trim();
-      const bin = db.export();
-      const blob = new Blob([bin], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = outName;
-      a.click();
-      URL.revokeObjectURL(url);
-      setStatus('Download gestartet: ' + outName);
-    }
+    $('#btnMake').addEventListener('click', makeAndDownload);
   </script>
 </body>
 </html>
