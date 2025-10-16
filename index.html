@@ -20,7 +20,7 @@
       <div class="col-12 col-lg-7">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h1 class="h4 mb-3">SQLite3 Generator – V1.17</h1>
+            <h1 class="h4 mb-3">SQLite3 Generator – V1.18</h1>
 
             <!-- PDF Upload -->
             <div class="mb-3">
@@ -50,25 +50,13 @@
             <div class="mb-3">
               <label class="form-label">„Jetzt“-Zeitstempel (Europa/Berlin)</label>
               <input id="nowPreview" class="form-control mono" type="text" value="" readonly>
-              <div class="form-text">Format: JJJJ-MM-DD HH:MM:SS – landet in <span class="mono">tblCustomer.Timestamp</span> &amp; <span class="mono">ArchiveDate</span>.</div>
             </div>
 
             <div class="d-grid d-sm-flex gap-2">
               <button id="btnBuild" class="btn btn-primary btn-lg">SQLite3 exportieren</button>
               <a id="downloadLink" class="btn btn-outline-secondary btn-lg disabled" download>Download ist bereit</a>
             </div>
-
             <div id="alertBox" class="mt-3"></div>
-            <hr class="my-4">
-
-            <details>
-              <summary class="mb-2"><strong>Inhalt &amp; Seed-Daten (Kurzfassung)</strong></summary>
-              <ul class="small">
-                <li><span class="mono">tblCustomer</span> – aus PDF befüllt</li>
-                <li><span class="mono">tblDeviceAbbreviations</span>, <span class="mono">tblIDNumberCaptions</span>, <span class="mono">tblMasterProcedureCopy</span> – Seed</li>
-                <li><span class="mono">tblCompany</span> – feste E+Service+Check (Laucha) als Lieferant</li>
-              </ul>
-            </details>
           </div>
         </div>
       </div>
@@ -263,7 +251,7 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
           parsed.Street = lines[streetIdx];
 
           // *** NAME: exakt die Zeile ÜBER der Straße ***
-const iAbove = streetIdx + 1; // statt -1
+const iAbove = streetIdx + 2; // statt -1
 if (iAbove < lines.length && notVendor(iAbove)) {
   const above = lines[iAbove].trim();
   if (above && !above.includes(',')) parsed.Name = above;
