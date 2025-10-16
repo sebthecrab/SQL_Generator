@@ -20,7 +20,7 @@
       <div class="col-12 col-lg-7">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h1 class="h4 mb-3">SQLite3 Generator – V1.11 </h1>
+            <h1 class="h4 mb-3">SQLite3 Generator – V1.12 </h1>
 
             <!-- PDF Upload -->
             <div class="mb-3">
@@ -35,14 +35,13 @@
               </div>
               <dl class="kv small-mono">
                 <dt>CustomerNumber</dt><dd id="pvCustomerNumber">–</dd>
-                <dt>Name (Kunde)</dt><dd id="pvName">–</dd>
+                <dt>Name</dt><dd id="pvName">–</dd>
                 <dt>Contact</dt><dd id="pvContact">–</dd>
                 <dt>Telefon (aus Ansprechpartner)</dt><dd id="pvTel">–</dd>
                 <dt>Street</dt><dd id="pvStreet">–</dd>
                 <dt>ZIP</dt><dd id="pvZIP">–</dd>
                 <dt>City</dt><dd id="pvCity">–</dd>
                 <dt>Country</dt><dd id="pvCountry">DE - Deutschland</dd>
-                <hr/>
                 <dt>Prüfobjekt – Adresse</dt><dd id="pvPO">–</dd>
               </dl>
             </div>
@@ -63,11 +62,11 @@
             <hr class="my-4">
 
             <details>
-              <summary class="mb-2"><strong>Inhalt &amp; Seed-Daten</strong></summary>
+              <summary class="mb-2"><strong>Inhalt &amp; Seed-Daten (Kurzfassung)</strong></summary>
               <ul class="small">
-                <li><span class="mono">tblCustomer</span> – aus PDF (nach deinen Regeln)</li>
+                <li><span class="mono">tblCustomer</span> – aus PDF befüllt</li>
                 <li><span class="mono">tblDeviceAbbreviations</span>, <span class="mono">tblIDNumberCaptions</span>, <span class="mono">tblMasterProcedureCopy</span> – Seed</li>
-                <li><span class="mono">tblCompany</span> – feste E+Service+Check (Laucha) als Lieferant (separat vom Kunden)</li>
+                <li><span class="mono">tblCompany</span> – feste E+Service+Check (Laucha) als Lieferant</li>
               </ul>
             </details>
           </div>
@@ -85,11 +84,9 @@
     </div>
   </main>
 
-  <!-- Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-
   <script>
     const $ = sel => document.querySelector(sel);
     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -110,7 +107,7 @@
     function updateNowPreview(){ $('#nowPreview').value = nowBerlin(); }
     updateNowPreview(); setInterval(updateNowPreview, 1000);
 
-    // Schema
+    // Schema (unverändert)
     const schemaSQL = `
 CREATE TABLE IF NOT EXISTS android_metadata ( locale TEXT );
 CREATE TABLE IF NOT EXISTS tblCompany (
@@ -173,16 +170,15 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
       PO_Address:null
     };
 
-    // Lieferant ausfiltern
+    // Lieferant ausfiltern (unverändert)
     const vendorMatchers = [
       /E\+?Service\+?Check/i, /Ziegelohstr\.?|Ziegelohstraße/i, /\b06636\b/i, /Laucha/i, /\(Unstrut\)/i
     ];
     function isVendorLine(line){ return vendorMatchers.some(rx => rx.test(line)); }
 
-    // Heuristiken
+    // Helper (unverändert außer ggf. Formatierung)
     const isStreet = s => {
-      if (!s || s.includes(',')) return false; // Komma = meist Prüfobjekt-Block, nicht die einzeilige Kundenadresse
-      // Straße muss NICHT "Straße" enthalten (z. B. "Moosbauerweg 5"); erfordert Hausnummer am Ende
+      if (!s || s.includes(',')) return false;
       return /[A-Za-zÄÖÜäöüß\.\- ]+\s+\d+[a-zA-Z]?$/.test(s);
     };
     const isZipCity = s => {
@@ -231,14 +227,14 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
         });
         const notVendor = (i) => !vendorIdx.has(i) && !isVendorLine(lines[i]);
 
-        // Kundennummer: explizit „Kunden-Nr.: <digits>“ (Beispiel im Referenz-PDF) :contentReference[oaicite:1]{index=1}
+        // Kundennummer: exakt rechts neben "Kunden-Nr.:"
         for(let i=0;i<lines.length;i++){
           if(!notVendor(i)) continue;
           const m = lines[i].match(/Kunden-?Nr\.?\s*:\s*([0-9]+)/i);
           if(m){ parsed.CustomerNumber = m[1]; break; }
         }
 
-        // Ansprechpartner & Telefon: „Ansprechpartner: Herr ... Tel: …“ → split vor „Tel“ (Beispiel im Referenz-PDF) :contentReference[oaicite:2]{index=2}
+        // Ansprechpartner & Telefon: "Ansprechpartner: ... Tel: ..."
         for (let i=0;i<lines.length;i++){
           if(!notVendor(i)) continue;
           const m = lines[i].match(/^\s*Ansprechpartner\s*:\s*(.+)$/i);
@@ -246,18 +242,18 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
             const raw = m[1].trim();
             const [namePart, telPart] = raw.split(/\bTel\b\s*:?\s*/i);
             if(namePart) parsed.Contact = namePart.trim().replace(/[,\s]+$/,'');
-            if(telPart) parsed.Tel = telPart.trim();
+            if(telPart)  parsed.Tel     = telPart.trim();
             break;
           }
         }
 
-        // Prüfobjekt-Adresse: ganze Zeile hinter „Adresse:“ (Beispiel im Referenz-PDF) :contentReference[oaicite:3]{index=3}
+        // Prüfobjekt-Adresse: komplette Zeile hinter "Adresse:"
         for(let i=0;i<lines.length;i++){
           const m = lines[i].match(/^\s*Adresse\s*:\s*(.+)$/i);
           if(m){ parsed.PO_Address = m[1].trim(); break; }
         }
 
-        // Straße → Name (Zeile darüber) → PLZ/Ort (Zeile danach)
+        // Straße finden
         let streetIdx=-1;
         for(let i=0;i<lines.length;i++){
           if(!notVendor(i)) continue;
@@ -266,26 +262,26 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
         if(streetIdx>=0){
           parsed.Street = lines[streetIdx];
 
-          // Name des Kunden = Zeile über der Straße (deine Regel)
-          for(let j=streetIdx-1; j>=0; j--){
-            if(!notVendor(j)) continue;
-            const l = lines[j].trim();
-            if(!l) continue;
-            // keine Komma-getr. Prüfobjekt-Zeilen
-            if(l.includes(',')) continue;
-            parsed.Name = l;
-            break;
+          // *** NAME: exakt die Zeile ÜBER der Straße ***
+          const iAbove = streetIdx - 1;
+          if (iAbove >= 0 && notVendor(iAbove)) {
+            const above = lines[iAbove].trim();
+            if (above && !above.includes(',')) parsed.Name = above;
           }
 
-          // PLZ/Ort suchen (nächste 4 Zeilen)
-          for(let j=streetIdx+1; j<=streetIdx+4 && j<lines.length; j++){
+          // PLZ/Ort – bestehende Logik beibehalten: nach der Straße suchen
+          let zc=null, zcIdx=-1;
+          for(let j=streetIdx+1; j<=streetIdx+6 && j<lines.length; j++){
             if(!notVendor(j)) continue;
-            if(isZipCity(lines[j])){
-              const zc = extractZipCity(lines[j]);
-              if(zc){ parsed.ZIP = zc.zip; parsed.City = zc.city; }
-              break;
+            if(isZipCity(lines[j])){ zcIdx=j; zc=extractZipCity(lines[j]); break; }
+          }
+          if(!zc){ // globaler Fallback (aber nicht Vendor)
+            for(let j=0;j<lines.length;j++){
+              if(!notVendor(j)) continue;
+              if(isZipCity(lines[j])){ zcIdx=j; zc=extractZipCity(lines[j]); break; }
             }
           }
+          if(zc){ parsed.ZIP = zc.zip; parsed.City = zc.city; }
         }
 
         // Country fix
@@ -303,7 +299,7 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
         $('#pvPO').textContent            = parsed.PO_Address ?? '–';
         $('#pdfPreviewWrap').style.display='block';
 
-        showAlert('PDF gelesen. Kundennummer, Name (Zeile über Straße), Ansprechpartner (ohne Tel), Prüfobjekt-Adresse übernommen.', 'success');
+        showAlert('PDF gelesen. Regeln angewendet (Kunden-Nr., Name über Straße, Ansprechpartner ohne Tel, Prüfobjekt-Adresse angezeigt).', 'success');
       }catch(err){
         console.error(err);
         showAlert('PDF konnte nicht verlässlich gelesen werden. Bitte andere Datei probieren.', 'danger');
@@ -325,7 +321,7 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
         { const s=`INSERT INTO android_metadata(locale) VALUES (?);`;
           const st=db.prepare(s); st.bind(['de']); st.step(); st.free(); }
 
-        // tblCompany = Lieferant (fest, unabhängig vom Kunden)
+        // tblCompany = Lieferant (fest)
         {
           const sql = `
             INSERT INTO tblCompany (
@@ -363,7 +359,7 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
           const stmt = db.prepare(sql); stmt.bind(params2); stmt.step(); stmt.free();
         }
 
-        // Seeds (unverändert)
+        // Seeds
         const seedSQL = `
 INSERT INTO tblDeviceAbbreviations ("DeviceAbbreviation","DeviceDescription","Timestamp") VALUES
 ('BDA','Beleuchtungs-Daueranschluss','2021-05-19 08:16:25'),
