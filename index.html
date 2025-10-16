@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SQLite-Exporter (Schema + Seed + PDF) – V2.9</title>
+  <title>SQLite-Exporter (Schema + Seed + PDF) – V1.9</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body{background:#f8fafc}
@@ -20,7 +20,7 @@
       <div class="col-12 col-lg-7">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h1 class="h4 mb-3">SQLite3 erstellen &amp; exportieren – V2.9 (mit PDF-Import)</h1>
+            <h1 class="h4 mb-3">SQLite3 erstellen &amp; exportieren – V1.9 (mit PDF-Import)</h1>
             <p class="text-muted mb-4">
               Läuft komplett lokal im Browser: <span class="mono">sql.js</span> (SQLite) &amp; <span class="mono">pdf.js</span> (PDF).
             </p>
@@ -331,6 +331,17 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
         db.run('BEGIN;');
         db.run(schemaSQL);
 
+        // tblCompany = Android
+        {
+          const sql = `
+            INSERT INTO android_metadata (
+              locale
+            ) VALUES (?);
+          `;
+          const params0 = ['de'];
+          const stmt = db.prepare(sql); stmt.bind(params0); stmt.step(); stmt.free();
+        }
+        
         // tblCompany = Lieferant (fest)
         {
           const sql = `
@@ -339,9 +350,9 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
               TelephoneNumber, FaxNumber, Email, Country, Supplier, ArchiveDate, ArchiveInterval, Timestamp
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
           `;
-          const params = [null, null, '2021-09-13 14:46:04', null,
-            'E+Service+Check GmbH', null, null, 'Große Ziegelohstraße 2', '06636', 'Laucha (Unstrut)',
-            null, null, null, 'DE - Deutschland', null, '2021-09-13 14:46:04', 12, '2021-09-13 12:46:04'];
+          const params = ['', '', '2021-09-13 14:46:04', '',
+            'E+Service+Check GmbH', '', '', 'Große Ziegelohstraße 2', '06636', 'Laucha (Unstrut)',
+            '', '', '', 'DE - Deutschland', '', '2021-09-13 14:46:04', 12, '2021-09-13 12:46:04'];
           const stmt = db.prepare(sql); stmt.bind(params); stmt.step(); stmt.free();
         }
 
@@ -408,7 +419,7 @@ INSERT INTO tblMasterProcedureCopy ("FunctionNumber","FunctionName","Test","Stat
         const blob = new Blob([binaryArray], { type: 'application/octet-stream' });
         const url = URL.createObjectURL(blob);
         const ts = now.replace(/[: ]/g,'-');
-        const filename = `export_${ts}.sqlite`;
+        const filename = `export_${ts}.sqlite3`;
         const a = $('#downloadLink');
         a.href = url; a.download = filename; a.classList.remove('disabled');
         showAlert(`Fertig! <strong>${filename}</strong> ist bereit zum Download.`, 'success');
