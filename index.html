@@ -20,7 +20,7 @@
       <div class="col-12 col-lg-7">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h1 class="h4 mb-3">SQLite3 Generator – V1.18</h1>
+            <h1 class="h4 mb-3">SQLite3 Generator – V1.12 </h1>
 
             <!-- PDF Upload -->
             <div class="mb-3">
@@ -50,6 +50,7 @@
             <div class="mb-3">
               <label class="form-label">„Jetzt“-Zeitstempel (Europa/Berlin)</label>
               <input id="nowPreview" class="form-control mono" type="text" value="" readonly>
+              <div class="form-text">Format: JJJJ-MM-DD HH:MM:SS – landet in <span class="mono">tblCustomer.Timestamp</span> &amp; <span class="mono">ArchiveDate</span>.</div>
             </div>
 
             <div class="d-grid d-sm-flex gap-2">
@@ -251,11 +252,11 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
           parsed.Street = lines[streetIdx];
 
           // *** NAME: exakt die Zeile ÜBER der Straße ***
-const iAbove = streetIdx + 3; // statt -1
-if (iAbove < lines.length && notVendor(iAbove)) {
-  const above = lines[iAbove].trim();
-  if (above && !above.includes(',')) parsed.Name = above;
-}
+          const iAbove = streetIdx - 1;
+          if (iAbove >= 0 && notVendor(iAbove)) {
+            const above = lines[iAbove].trim();
+            if (above && !above.includes(',')) parsed.Name = above;
+          }
 
           // PLZ/Ort – bestehende Logik beibehalten: nach der Straße suchen
           let zc=null, zcIdx=-1;
