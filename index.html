@@ -21,7 +21,7 @@
       <div class="col-12 col-lg-7">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h1 class="h4 mb-3">SQLite3 erstellen &amp; exportieren - V2.5</h1>
+            <h1 class="h4 mb-3">SQLite3 erstellen &amp; exportieren - V2.6</h1>
             <p class="text-muted mb-4">
               Diese Seite erzeugt lokal im Browser (per <span class="mono">sql.js</span>) eine <strong>SQLite3</strong>-Datei
               mit deinem Schema &amp; Startdaten. Nichts verlässt dein Gerät.
@@ -431,7 +431,7 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
           stmt.bind(params); stmt.step(); stmt.free();
         }
         // --- Initiale Seed-Daten (aus Original-DB) ---
-const seedSQL = `
+const sql = `
 INSERT INTO tblDeviceAbbreviations ("DeviceAbbreviation", "DeviceDescription", "Timestamp") VALUES 
 ('BDA', 'Beleuchtungs-Daueranschluss', '2021-05-19 08:16:25'),
 ('BPA', 'Beleuchtungs-Prüfanschluss', '2021-05-19 08:16:25'),
