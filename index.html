@@ -21,7 +21,7 @@
       <div class="col-12 col-lg-7">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h1 class="h4 mb-3">SQLite3 erstellen &amp; exportieren - V2.3</h1>
+            <h1 class="h4 mb-3">SQLite3 erstellen &amp; exportieren - V2.4</h1>
             <p class="text-muted mb-4">
               Diese Seite erzeugt lokal im Browser (per <span class="mono">sql.js</span>) eine <strong>SQLite3</strong>-Datei
               mit deinem Schema &amp; Startdaten. Nichts verlässt dein Gerät.
@@ -375,7 +375,7 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
         {
           const sql = `
             INSERT INTO tblCompany (
-              SecutestSerialNumber, KeyCode1, RegistrationDate1, CustomerNumber, Company, Department, Name, Street, PostalCode, City,
+              SecutestSerialNumber, KeyCode, RegistrationDate, CustomerNumber, Company, Department, Name, Street, PostalCode, City,
               TelephoneNumber, FaxNumber, Email, Country, Supplier, ArchiveDate, ArchiveInterval, Timestamp
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
           `;
@@ -408,7 +408,7 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
         {
           const sql = `
             INSERT INTO tblCustomer (
-              CustomerNumber1, Name, Contact, Street, ZIP, City, Country, Tel, Fax, Email, Remark, Timestamp, ArchiveDate, ArchiveInterval
+              CustomerNumber, Name, Contact, Street, ZIP, City, Country, Tel, Fax, Email, Remark, Timestamp, ArchiveDate, ArchiveInterval
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
           `;
           const params = [
