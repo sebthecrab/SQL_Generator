@@ -380,7 +380,7 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults (
         TelephoneNumber, FaxNumber, Email, Country, Supplier, ArchiveDate, ArchiveInterval, Timestamp
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
-    const params1 = ['','','2021-09-13 14:46:04','','E+Service+Check GmbH','','','Große Ziegelohstraße 2','06636','Laucha (Unstrut)','','',n'','DE - Deutschland','','2021-09-13 14:46:04',12,'2021-09-13 12:46:04'];
+    const params1 = ['','','2021-09-13 14:46:04','','E+Service+Check GmbH','','','Große Ziegelohstraße 2','06636','Laucha (Unstrut)','','','','DE - Deutschland','','2021-09-13 14:46:04',12,'2021-09-13 12:46:04'];
     const stmt1 = db.prepare(sql1); stmt1.bind(params1); stmt1.step(); stmt1.free();
   }
   {
