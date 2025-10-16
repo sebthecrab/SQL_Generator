@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SQLite Schema – Generator (Bootstrap 5, Mobile-First)</title>
+
+  <!-- Bootstrap 5.3 (aktuell) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    :root { --maxw: 1080px; }
+    body { background: #f8fafc; }
+    header.navbar { box-shadow: 0 2px 12px rgba(0,0,0,.05); }
+    pre.code {
+      white-space: pre;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: .9rem;
+      line-height: 1.45;
+      background: #0b1020;
+      color: #e6edf3;
+      border-radius: .75rem;
+      padding: 1rem;
+      overflow: auto;
+    }
+    .badge-pill { border-radius: 999px; }
+    .card { border: 1px solid #e5e7eb; }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="navbar navbar-expand-lg bg-white">
+    <div class="container">
+      <a class="navbar-brand fw-semibold" href="#">SQLite Schema</a>
+      <div class="ms-auto d-flex gap-2">
+        <button id="btnCopy" class="btn btn-outline-secondary btn-sm">SQL kopieren</button>
+        <button id="btnDownload" class="btn btn-primary btn-sm">Als .sql herunterladen</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="container my-4" style="max-width: var(--maxw);">
+    <!-- Intro -->
+    <div class="row g-3">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <h1 class="h4 mb-2">Zielschema & Beispiel-Daten</h1>
+            <p class="mb-0 text-secondary">
+              Diese Seite enthält das von dir gewünschte SQLite-Schema als SQL-Dump.
+              Du kannst es direkt in SQLite ausführen oder als Datei speichern.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabellenübersicht (lesbar, mobil) -->
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <h2 class="h5">Tabellenübersicht</h2>
+            <div class="row row-cols-1 row-cols-md-2 g-3">
+              <div class="col">
+                <div class="p-3 bg-light rounded">
+                  <div class="fw-semibold">android_metadata</div>
+                  <div class="text-secondary small">Spalten: <span class="badge text-bg-light">__rowid__</span> <span class="badge text-bg-light">locale</span></div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="p-3 bg-light rounded">
+                  <div class="fw-semibold">tblCompany</div>
+                  <div class="text-secondary small">enthält 1 Beispiel-INSERT gemäß Vorgabe</div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="p-3 bg-light rounded">
+                  <div class="fw-semibold">tblCustomer</div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="p-3 bg-light rounded">
+                  <div class="fw-semibold">tblDeviceAbbreviations</div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="p-3 bg-light rounded">
+                  <div class="fw-semibold">tblIDNumberCaptions</div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="p-3 bg-light rounded">
+                  <div class="fw-semibold">tblIDNumbers</div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="p-3 bg-light rounded">
+                  <div class="fw-semibold">tblMasterProcedureCopy</div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="p-3 bg-light rounded">
+                  <div class="fw-semibold">tblResults</div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="p-3 bg-light rounded">
+                  <div class="fw-semibold">tblResultsHeader</div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="p-3 bg-light rounded">
+                  <div class="fw-semibold">tblSecutestRegistration</div>
+                  <div class="text-secondary small">Platzhalterspalte <code>__rowid__</code></div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="p-3 bg-light rounded">
+                  <div class="fw-semibold">tblVisInspectionWeldingHeader</div>
+                  <div class="text-secondary small">Platzhalterspalte <code>__rowid__</code></div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="p-3 bg-light rounded">
+                  <div class="fw-semibold">tblVisInspectionWeldingResults</div>
+                  <div class="text-secondary small">Platzhalterspalte <code>__rowid__</code></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="alert alert-info mt-3 mb-0 small">
+              Hinweis: Für die drei Tabellen ohne Feldliste (<em>tblSecutestRegistration</em>, <em>tblVisInspectionWeldingHeader</em>, <em>tblVisInspectionWeldingResults</em>)
+              habe ich je eine Platzhalterspalte <code>__rowid__ INTEGER</code> angelegt. Sag Bescheid, wenn du dort konkrete Spalten brauchst – ich erweitere das Schema gern.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SQL Dump -->
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <h2 class="h5 d-flex align-items-center justify-content-between">
+              SQL-Dump
+              <span class="badge text-bg-light badge-pill">UTF-8</span>
+            </h2>
+            <pre id="sql" class="code" aria-label="SQL Dump"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="container my-4" style="max-width: var(--maxw);">
+    <div class="text-center text-secondary small">
+      Bootstrap 5 · Client-only · Erstellt für dein gewünschtes Schema
+    </div>
+  </footer>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // --- SQL-Dump als String (CREATEs + INSERT für tblCompany) ---
+    const sqlDump = `PRAGMA foreign_keys=OFF;
+BEGIN TRANSACTION;
+
+/* android_metadata */
+CREATE TABLE IF NOT EXISTS "android_metadata" (
+  "__rowid__" INTEGER,
+  "locale"    TEXT
+);
+
+/* tblCompany */
+CREATE TABLE IF NOT EXISTS "tblCompany" (
+  "__rowid__"              INTEGER,
+  "SecutestSerialNumber"   TEXT,
+  "KeyCode1"               TEXT,
+  "RegistrationDate1"      TEXT,
+  "CustomerNumber"         TEXT,
+  "Company"                TEXT,
+  "Department"             TEXT,
+  "Name"                   TEXT,
+  "Street"                 TEXT,
+  "PostalCode"             TEXT,
+  "City"                   TEXT,
+  "TelephoneNumber"        TEXT,
+  "FaxNumber"              TEXT,
+  "Email"                  TEXT,
+  "Country"                TEXT,
+  "Supplier"               TEXT,
+  "ArchiveDate"            TEXT,
+  "ArchiveInterval"        INTEGER,
+  "Timestamp"              TEXT
+);
+
+INSERT INTO "tblCompany" (
+  "__rowid__", "SecutestSerialNumber", "KeyCode1", "RegistrationDate1", "CustomerNumber",
+  "Company", "Department", "Name", "Street", "PostalCode", "City", "TelephoneNumber",
+  "FaxNumber", "Email", "Country", "Supplier", "ArchiveDate", "ArchiveInterval", "Timestamp"
+) VALUES (
+  1, NULL, NULL, '2021-09-13 14:46:04', NULL,
+  'E+Service+Check GmbH', NULL, NULL, 'Große Ziegelohstraße 2', '06636', 'Laucha (Unstrut)', NULL,
+  NULL, NULL, 'DE - Deutschland', NULL, '2021-09-13 14:46:04', 12, '2021-09-13 12:46:04'
+);
+
+/* tblCustomer */
+CREATE TABLE IF NOT EXISTS "tblCustomer" (
+  "__rowid__"       INTEGER,
+  "CustomerNumber1" TEXT,
+  "Name"            TEXT,
+  "Contact"         TEXT,
+  "Street"          TEXT,
+  "ZIP"             TEXT,
+  "City"            TEXT,
+  "Country"         TEXT,
+  "Tel"             TEXT,
+  "Fax"             TEXT,
+  "Email"           TEXT,
+  "Remark"          TEXT,
+  "Timestamp"       TEXT,
+  "ArchiveDate"     TEXT
+);
+
+/* tblDeviceAbbreviations */
+CREATE TABLE IF NOT EXISTS "tblDeviceAbbreviations" (
+  "__rowid__"          INTEGER,
+  "DeviceAbbreviation" TEXT,
+  "DeviceDescription1" TEXT,
+  "Timestamp"          TEXT
+);
+
+/* tblIDNumberCaptions */
+CREATE TABLE IF NOT EXISTS "tblIDNumberCaptions" (
+  "__rowid__"       INTEGER,
+  "Name"            TEXT,
+  "Order"           INTEGER,
+  "NewOrder"        INTEGER,
+  "ColumnNo"        INTEGER,
+  "NewCaption1"     TEXT,
+  "Hide"            INTEGER,
+  "ProtocolNumber"  TEXT,
+  "Mandatory"       INTEGER,
+  "Export"          INTEGER,
+  "TimeStamp"       TEXT
+);
+
+/* tblIDNumbers */
+CREATE TABLE IF NOT EXISTS "tblIDNumbers" (
+  "__rowid__"        INTEGER,
+  "ProcedureName"    TEXT,
+  "CustomerNumber"   TEXT,
+  "IDNumber"         TEXT,
+  "Location"         TEXT,
+  "DeviceDescription" TEXT,
+  "Manufacturer"     TEXT,
+  "Type"             TEXT,
+  "Class"            TEXT,
+  "Standard"         TEXT,
+  "SubStandard"      TEXT,
+  "FactoryNumber"    TEXT,
+  "User1"            TEXT,
+  "User2"            TEXT,
+  "User3"            TEXT,
+  "Remark"           TEXT,
+  "TestInterval"     TEXT,
+  "ProtocolForm"     TEXT,
+  "CableLength"      TEXT,
+  "CableCrossection" TEXT,
+  "HeatingPower"     TEXT,
+  "Power"            TEXT,
+  "OCVoltage"        TEXT,
+  "AppliedParts"     TEXT,
+  "RCDType"          TEXT,
+  "RCDIDN"           TEXT,
+  "IsolatedParts"    TEXT,
+  "PEParts"          TEXT,
+  "PETest"           TEXT,
+  "InsulationTest1"  TEXT,
+  "CurrentClamp"     TEXT,
+  "PRCDS"            TEXT,
+  "ELV"              TEXT,
+  "ELVTest"          TEXT,
+  "SurgeArrestor"    TEXT,
+  "Wiring"           TEXT,
+  "Pictures"         TEXT,
+  "LastTest"         TEXT,
+  "TestResult"       TEXT,
+  "NextTest"         TEXT,
+  "Hyperlink"        TEXT,
+  "Status"           TEXT,
+  "Remark2"          TEXT,
+  "TestNumber"       TEXT,
+  "Timestamp"        TEXT
+);
+
+/* tblMasterProcedureCopy */
+CREATE TABLE IF NOT EXISTS "tblMasterProcedureCopy" (
+  "Parameter1"         TEXT,
+  "Parameter2"         TEXT,
+  "Parameter3"         TEXT,
+  "Parameter4"         TEXT,
+  "Min"                TEXT,
+  "Max"                TEXT,
+  "First"              TEXT,
+  "Expected"           TEXT,
+  "Unit"               TEXT,
+  "RangeMin"           TEXT,
+  "RangeMax"           TEXT,
+  "TypeParameter1"     TEXT,
+  "TypeParameter2"     TEXT,
+  "TypeParameter3"     TEXT,
+  "TypeParameter4"     TEXT,
+  "WorstCaseCondition" TEXT,
+  "Simulation"         TEXT,
+  "WebServer"          TEXT
+);
+
+/* tblResults */
+CREATE TABLE IF NOT EXISTS "tblResults" (
+  "__rowid__"            INTEGER,
+  "ProcedureName"        TEXT,
+  "CustomerNumber"       TEXT,
+  "IDNumber"             TEXT,
+  "TestNumber"           TEXT,
+  "ResultNumber"         TEXT,
+  "ProcedureStepNumber1" TEXT,
+  "FunctionName"         TEXT,
+  "Picture"              TEXT,
+  "Remark"               TEXT,
+  "Protocol"             TEXT,
+  "WorstCase"            TEXT,
+  "TestTime"             TEXT,
+  "Parameter1"           TEXT,
+  "Parameter2"           TEXT,
+  "Parameter3"           TEXT,
+  "Parameter4"           TEXT,
+  "Min"                  TEXT,
+  "Max"                  TEXT,
+  "First"                TEXT,
+  "Expected"             TEXT,
+  "Result"               TEXT,
+  "OK"                   TEXT
+);
+
+/* tblResultsHeader */
+CREATE TABLE IF NOT EXISTS "tblResultsHeader" (
+  "__rowid__"               INTEGER,
+  "ProcedureName"           TEXT,
+  "CustomerNumber"          TEXT,
+  "IDNumber"                TEXT,
+  "TestNumber"              TEXT,
+  "OrderNumber"             TEXT,
+  "Remark"                  TEXT,
+  "TestDate"                TEXT,
+  "TestResult"              TEXT,
+  "TestingPerson"           TEXT,
+  "Pictures"                TEXT,
+  "SecutestIDString"        TEXT,
+  "SoftwareVersion"         TEXT,
+  "SecutestSoftwareVersion" TEXT,
+  "TesterSerialNumber"      TEXT,
+  "LineVoltage"             TEXT,
+  "Protocol"                TEXT,
+  "Timestamp"               TEXT
+);
+
+/* Tabellen ohne definierte Spalten – Platzhalter */
+CREATE TABLE IF NOT EXISTS "tblSecutestRegistration" (
+  "__rowid__" INTEGER
+);
+CREATE TABLE IF NOT EXISTS "tblVisInspectionWeldingHeader" (
+  "__rowid__" INTEGER
+);
+CREATE TABLE IF NOT EXISTS "tblVisInspectionWeldingResults" (
+  "__rowid__" INTEGER
+);
+
+COMMIT;`;
+
+    // In Seite rendern
+    const pre = document.getElementById('sql');
+    pre.textContent = sqlDump;
+
+    // Copy
+    document.getElementById('btnCopy').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(sqlDump);
+        toast('SQL in die Zwischenablage kopiert.', 'success');
+      } catch {
+        toast('Kopieren nicht möglich – bitte manuell markieren.', 'warning');
+      }
+    });
+
+    // Download
+    document.getElementById('btnDownload').addEventListener('click', () => {
+      const blob = new Blob([sqlDump], { type: 'text/sql;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().replace(/[:.]/g,'-');
+      a.href = url;
+      a.download = `schema_${ts}.sql`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Mini-Toast ohne Abhängigkeiten
+    function toast(msg, style='secondary') {
+      const el = document.createElement('div');
+      el.className = `toast align-items-center text-bg-${style} border-0 position-fixed bottom-0 end-0 m-3`;
+      el.setAttribute('role', 'status');
+      el.setAttribute('aria-live', 'polite');
+      el.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body">${msg}</div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>`;
+      document.body.appendChild(el);
+      const t = new bootstrap.Toast(el, { delay: 2500 });
+      t.show();
+      el.addEventListener('hidden.bs.toast', () => el.remove());
+    }
+  </script>
+</body>
+</html>
