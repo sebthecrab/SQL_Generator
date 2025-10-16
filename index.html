@@ -21,7 +21,7 @@
       <div class="col-12 col-lg-7">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h1 class="h4 mb-3">SQLite3 erstellen &amp; exportieren - V2</h1>
+            <h1 class="h4 mb-3">SQLite3 erstellen &amp; exportieren - V2.1</h1>
             <p class="text-muted mb-4">
               Diese Seite erzeugt lokal im Browser (per <span class="mono">sql.js</span>) eine <strong>SQLite3</strong>-Datei
               mit deinem Schema &amp; Startdaten. Nichts verlässt dein Gerät.
@@ -111,24 +111,24 @@ CREATE TABLE IF NOT EXISTS android_metadata (
 );
 
 CREATE TABLE IF NOT EXISTS tblCompany (
-  "SecutestSerialNumber" TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
-  "KeyCode" TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
-  "RegistrationDate" TEXT NOT NULL -- declared=DATETIME; datetime-like,
-  "CustomerNumber" TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
-  "Company" TEXT NOT NULL -- declared=VARCHAR2 (50),
-  "Department" TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
-  "Name" TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
-  "Street" TEXT NOT NULL -- declared=VARCHAR2 (50),
-  "PostalCode" INTEGER NOT NULL -- declared=VARCHAR2 (10),
-  "City" TEXT NOT NULL -- declared=VARCHAR2 (50),
-  "TelephoneNumber" TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
-  "FaxNumber" TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
-  "Email" TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
-  "Country" TEXT NOT NULL -- declared=VARCHAR2 (20),
-  "Supplier" TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
-  "ArchiveDate" TEXT NOT NULL -- declared=DATETIME; datetime-like,
-  "ArchiveInterval" INTEGER NOT NULL -- declared=INT,
-  "Timestamp" TEXT NOT NULL -- declared=DATETIME; datetime-like
+  SecutestSerialNumber TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
+  KeyCode TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
+  RegistrationDate TEXT NOT NULL -- declared=DATETIME; datetime-like,
+  CustomerNumber TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
+  Company TEXT NOT NULL -- declared=VARCHAR2 (50),
+  Department TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
+  Name TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
+  Street TEXT NOT NULL -- declared=VARCHAR2 (50),
+  PostalCode INTEGER NOT NULL -- declared=VARCHAR2 (10),
+  City TEXT NOT NULL -- declared=VARCHAR2 (50),
+  TelephoneNumber TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
+  FaxNumber TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
+  Email TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
+  Country TEXT NOT NULL -- declared=VARCHAR2 (20),
+  Supplier TEXT NOT NULL -- declared=VARCHAR2 (50); empty-string,
+  ArchiveDate TEXT NOT NULL -- declared=DATETIME; datetime-like,
+  ArchiveInterval INTEGER NOT NULL -- declared=INT,
+  Timestamp TEXT NOT NULL -- declared=DATETIME; datetime-like
 );
 
 CREATE TABLE IF NOT EXISTS tblCustomer (
