@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SQLite-Exporter – V1.11</title>
+  <title>SQLite-Exporter – V1.15 (Name = erste gültige Zeile)</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body{background:#f8fafc}
@@ -20,7 +20,7 @@
       <div class="col-12 col-lg-7">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h1 class="h4 mb-3">SQLite3 Generator – V1.11</h1>
+            <h1 class="h4 mb-3">SQLite3 Generator – V1.15</h1>
 
             <!-- PDF Upload -->
             <div class="mb-3">
@@ -120,13 +120,14 @@
     ];
     function isVendorLine(line){ return vendorMatchers.some(rx => rx.test(line)); }
 
-    // Weitere Dinge, die NIE ein Firmenname sein dürfen
+    // Dinge, die NIE ein Firmenname sein dürfen (deine Liste + weitere Fußzeilen/Metas)
     const nameExclusions = [
       /E\+?\s*Service\+?\s*Check\s+GmbH/i,
-      /E\+?\s*Service\+?\s*Check\s+GbH/i,                 // Tippfehler-Variante
+      /E\+?\s*Service\+?\s*Check\s+GbH/i,
       /Große?\s+Ziegelohstr(?:\.|aße)/i,
       /06636\s+Laucha(?:\/Unstrut|(?:\s+an\s+der\s+Unstrut)?)/i,
       /Niederlassungen\s*:/i,
+      /Hamburg|Berlin|Düsseldorf|Leipzig|Stuttgart|München|Hannover|Frankfurt|Dortmund|Naumburg/i,
       /Mitglied\s+in\s+der\s+IHK/i,
       /Zertifiziert\s+nach\s+DIN/i,
       /Unterwegs\s+für\s+Ihre\s+Sicherheit/i,
@@ -142,7 +143,7 @@
       /Amtsgericht/i,
       /SWIFT/i,
       /Geschäftsführer/i,
-      /Datum\s*:|^(\d{1,2}\.\d{1,2}\.\d{2,4})$/i
+      /Datum\s*:|^\d{1,2}\.\d{1,2}\.\d{2,4}$/i
     ];
     function isExcludedName(txt){
       if(!txt) return true;
@@ -165,7 +166,7 @@
       return m ? {zip:m[1], city:m[2].trim()} : null;
     };
 
-    // ---------- PDF lesen (nur Textzeilen, keine Y-Logik nötig) ----------
+    // ---------- PDF lesen ----------
     async function pdfToLines(file){
       const ab = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({data: ab}).promise;
@@ -206,7 +207,7 @@
         lines.forEach((l,i)=>{ if(isVendorLine(l)) { for(let k=Math.max(0,i-2); k<=Math.min(lines.length-1,i+2); k++) vendorIdx.add(k); } });
         const notVendor = (i) => i>=0 && i<lines.length && !vendorIdx.has(i) && !isVendorLine(lines[i]);
 
-        // Kundennummer: exakt neben "Kunden-Nr.:"
+        // Kundennummer: genau neben "Kunden-Nr.:"
         for(let i=0;i<lines.length;i++){
           if(!notVendor(i)) continue;
           const m = lines[i].match(/Kunden-?Nr\.?\s*:\s*([0-9]+)/i);
@@ -257,9 +258,8 @@
           if(zc){ parsed.ZIP = zc.zip; parsed.City = zc.city; }
         }
 
-        // Kundenname: LETZTE gültige Zeile des Dokuments (mit Ausschlüssen)
-        // – unabhängig von Straße/PLZ/Ort –
-        for(let i=lines.length-1; i>=0; i--){
+        // Kundenname: ERSTE gültige Zeile des Dokuments (mit Ausschlüssen)
+        for(let i=0; i<lines.length; i++){
           const txt = lines[i].trim();
           if(!txt) continue;
           if(!notVendor(i)) continue;       // Vendor/Absender ausschließen
@@ -283,14 +283,14 @@
         $('#pvPO').textContent            = parsed.PO_Address ?? '–';
         $('#pdfPreviewWrap').style.display='block';
 
-        showAlert('PDF gelesen. Name = letzte gültige Zeile; Straße/PLZ/Ort/Telefon unverändert.', 'success');
+        showAlert('PDF gelesen. Name = erste gültige Zeile; Straße/PLZ/Ort/Telefon unverändert.', 'success');
       }catch(err){
         console.error(err);
         showAlert('PDF konnte nicht verlässlich gelesen werden. Bitte andere Datei probieren.', 'danger');
       }
     });
 
-    // ---------- SQLite (dein bisheriger Teil, unverändert) ----------
+    // ---------- SQLite ----------
     const schemaSQL = `
 CREATE TABLE IF NOT EXISTS android_metadata ( locale TEXT );
 CREATE TABLE IF NOT EXISTS tblCompany (
@@ -346,7 +346,7 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
       SQL = await initSqlJs({ locateFile: f => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/' + f });
     })();
 
-    // DB bauen & exportieren (unverändert)
+    // DB bauen & exportieren
     let SQLDB;
     async function buildAndExport(){
       if(!SQL){ showAlert('SQL-Engine lädt noch. Bitte erneut versuchen …','warning'); return; }
