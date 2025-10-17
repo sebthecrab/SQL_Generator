@@ -262,18 +262,44 @@
           if(zc){ parsed.ZIP = zc.zip; parsed.City = zc.city; }
         }
 
-        // --- Dynamischer Kundenname aus Kopfbereich (analog Position "Kreisklinik ...") ---
-        // Firmenname: obere ~25 Zeilen, keine Kommas/PLZ, kein Vendor, nicht in Ausschlussliste,
-        // mindestens 2 Wörter (erster beginnt mit Großbuchstaben)
-        const isPossibleCompanyName = (line) => {
-          if (!line) return false;
-          const txt = line.trim();
-          if (!txt || txt.includes(',') || /\b\d{5}\b/.test(txt)) return false;
-          if (isExcludedName(txt)) return false;
-          const words = txt.split(/\s+/);
-          if (words.length < 2 || words.length > 8) return false;
-          return /^[A-ZÄÖÜ]/.test(words[0]) && !/^(Herr|Frau)$/i.test(words[0]);
-        };
+        // --- NAME: exakt die Zeile ÜBER der Straße (Achtung: Array ist bottom->top sortiert) ---
+(function pickCustomerName(){
+  if (streetIdx >= 0) {
+    // Im Array ist "über" = +1 (weil bottom->top)
+    const idxAbove = streetIdx + 1;
+
+    // Hilfsfunktionen/Filter (wie bisher genutzt)
+    const clean = s => s.replace(/\s+Tel\.?.*$/i, '').replace(/,\s*$/, '').trim();
+    const isBad = txt =>
+      !txt ||
+      txt.includes(',') ||                          // keine Prüfobjekt-Zeilen
+      /^(Adresse|Ansprechpartner|Kunden-?Nr\.?)/i.test(txt) ||
+      /^(Tel|Fax|E-?Mail|Email)\b/i.test(txt) ||
+      isVendorLine(txt) ||                          // E+Service+Check o.ä.
+      isExcludedName(txt);                          // deine Ausschlussliste
+
+    let name = null;
+
+    // Primär: genau die Zeile über der Straße
+    if (notVendor(idxAbove)) {
+      const t = clean((lines[idxAbove] || '').trim());
+      if (!isBad(t)) name = t;
+    }
+
+    // Fallback: noch 1–2 Zeilen weiter oben scannen (gleicher Block), falls o.g. leer/ungültig
+    if (!name) {
+      const windowIdx = [idxAbove + 1, idxAbove + 2];
+      for (const i of windowIdx) {
+        if (!notVendor(i)) continue;
+        const t = clean((lines[i] || '').trim());
+        if (!isBad(t)) { name = t; break; }
+      }
+    }
+
+    if (name) parsed.Name = name; // nur setzen, wenn wirklich gefunden
+  }
+})();
+
 
         for (let i = 0; i < Math.min(25, lines.length); i++) {
           if (!notVendor(i)) continue;
