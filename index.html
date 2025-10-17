@@ -20,7 +20,7 @@
       <div class="col-12 col-lg-7">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h1 class="h4 mb-3">SQLite3 Generator – V1.17</h1>
+            <h1 class="h4 mb-3">SQLite3 Generator – V1.18</h1>
 
             <!-- PDF Upload -->
             <div class="mb-3">
@@ -299,16 +299,6 @@
     if (name) parsed.Name = name; // nur setzen, wenn wirklich gefunden
   }
 })();
-
-
-        for (let i = 0; i < Math.min(25, lines.length); i++) {
-          if (!notVendor(i)) continue;
-          const candidate = lines[i].trim();
-          if (isPossibleCompanyName(candidate)) {
-            parsed.Name = candidate;
-            break;
-          }
-        }
 
         // Country fix
         parsed.Country = 'DE - Deutschland';
