@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SQLite-Exporter – V1.14</title>
+  <title>SQLite-Exporter – V1.11</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body{background:#f8fafc}
@@ -20,7 +20,7 @@
       <div class="col-12 col-lg-7">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h1 class="h4 mb-3">SQLite3 Generator – V1.14</h1>
+            <h1 class="h4 mb-3">SQLite3 Generator – V1.11</h1>
 
             <!-- PDF Upload -->
             <div class="mb-3">
@@ -31,7 +31,7 @@
             <!-- Vorschau erkannter Werte -->
             <div class="mb-3" id="pdfPreviewWrap" style="display:none;">
               <div class="alert alert-info mb-2">
-                <strong>Erkannte PDF-Daten</strong>
+                <strong>Erkannte PDF-Daten</strong> – werden beim Export verwendet.
               </div>
               <dl class="kv small-mono">
                 <dt>CustomerNumber</dt><dd id="pvCustomerNumber">–</dd>
@@ -48,8 +48,9 @@
 
             <!-- Zeit -->
             <div class="mb-3">
-              <label class="form-label">„Jetzt“-Zeit (Europa/Berlin)</label>
-              <input id="nowPreview" class="form-control mono" readonly>
+              <label class="form-label">„Jetzt“-Zeitstempel (Europa/Berlin)</label>
+              <input id="nowPreview" class="form-control mono" type="text" value="" readonly>
+              <div class="form-text">Format: JJJJ-MM-DD HH:MM:SS – landet in <span class="mono">tblCustomer.Timestamp</span> &amp; <span class="mono">ArchiveDate</span>.</div>
             </div>
 
             <div class="d-grid d-sm-flex gap-2">
@@ -58,6 +59,16 @@
             </div>
 
             <div id="alertBox" class="mt-3"></div>
+            <hr class="my-4">
+
+            <details>
+              <summary class="mb-2"><strong>Inhalt &amp; Seed-Daten (Kurzfassung)</strong></summary>
+              <ul class="small">
+                <li><span class="mono">tblCustomer</span> – aus PDF befüllt</li>
+                <li><span class="mono">tblDeviceAbbreviations</span>, <span class="mono">tblIDNumberCaptions</span>, <span class="mono">tblMasterProcedureCopy</span> – Seed</li>
+                <li><span class="mono">tblCompany</span> – feste E+Service+Check (Laucha) als Lieferant</li>
+              </ul>
+            </details>
           </div>
         </div>
       </div>
@@ -94,9 +105,192 @@
         return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
       }
     }
-    function updateNow(){ $('#nowPreview').value = nowBerlin(); } updateNow(); setInterval(updateNow,1000);
+    function showAlert(html, type='info'){ $('#alertBox').innerHTML=`<div class="alert alert-${type} mb-0" role="alert">${html}</div>`; }
+    function updateNowPreview(){ $('#nowPreview').value = nowBerlin(); }
+    updateNowPreview(); setInterval(updateNowPreview, 1000);
 
-    // Schema (unverändert)
+    // ---------- Ausschlusslisten ----------
+    // Vendor/Absender (E+Service+Check) – Zeilen, die nicht als Kundendaten taugen
+    const vendorMatchers = [
+      /E\+?\s*Service\+?\s*Check/i,
+      /Große?\s+Ziegelohstr(?:\.|aße)/i,
+      /\b06636\b/i,
+      /Laucha/i,
+      /Unstrut/i
+    ];
+    function isVendorLine(line){ return vendorMatchers.some(rx => rx.test(line)); }
+
+    // Weitere Dinge, die NIE ein Firmenname sein dürfen
+    const nameExclusions = [
+      /E\+?\s*Service\+?\s*Check\s+GmbH/i,
+      /E\+?\s*Service\+?\s*Check\s+GbH/i,                 // Tippfehler-Variante
+      /Große?\s+Ziegelohstr(?:\.|aße)/i,
+      /06636\s+Laucha(?:\/Unstrut|(?:\s+an\s+der\s+Unstrut)?)/i,
+      /Niederlassungen\s*:/i,
+      /Mitglied\s+in\s+der\s+IHK/i,
+      /Zertifiziert\s+nach\s+DIN/i,
+      /Unterwegs\s+für\s+Ihre\s+Sicherheit/i,
+      /Projektleiter/i,
+      /Arbeitsauftrag/i,
+      /Telefon\s*:|^Tel\.?\s*:/i,
+      /Fax\s*:|^Fax\s*:/i,
+      /@e-?service-?check\.de/i,
+      /Bankverbindung/i,
+      /Volksbank/i,
+      /USt-?IdNr/i,
+      /IBAN/i,
+      /Amtsgericht/i,
+      /SWIFT/i,
+      /Geschäftsführer/i,
+      /Datum\s*:|^(\d{1,2}\.\d{1,2}\.\d{2,4})$/i
+    ];
+    function isExcludedName(txt){
+      if(!txt) return true;
+      const t = txt.trim();
+      if(!t || t.length<3) return true;
+      return nameExclusions.some(rx => rx.test(t));
+    }
+
+    // ---------- Heuristiken für Straße / PLZ Ort (wie zuvor) ----------
+    const isStreet = s => {
+      if (!s || s.includes(',')) return false; // Prüfobjekt-Zeilen mit Komma sind NICHT die Kundenstraße
+      return /[A-Za-zÄÖÜäöüß\.\- ]+\s+\d+[a-zA-Z]?$/i.test(s);
+    };
+    const isZipCity = s => {
+      if (!s || s.includes(',')) return false;
+      return /\b\d{5}\b\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-\(\) ]+$/i.test(s);
+    };
+    const extractZipCity = s => {
+      const m = s.match(/\b(\d{5})\b\s+([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-\(\) ]+)$/i);
+      return m ? {zip:m[1], city:m[2].trim()} : null;
+    };
+
+    // ---------- PDF lesen (nur Textzeilen, keine Y-Logik nötig) ----------
+    async function pdfToLines(file){
+      const ab = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({data: ab}).promise;
+      const all=[];
+      for(let p=1;p<=pdf.numPages;p++){
+        const page = await pdf.getPage(p);
+        const tc = await page.getTextContent();
+        const linesMap = new Map();
+        tc.items.forEach(it=>{
+          const str = ('str' in it)? it.str : '';
+          const tr = it.transform || [1,0,0,1,0,0];
+          const y = Math.round(tr[5]||0), x = tr[4]||0;
+          if(!linesMap.has(y)) linesMap.set(y,[]);
+          linesMap.get(y).push({x,str});
+        });
+        const ys = [...linesMap.keys()].sort((a,b)=>a-b);
+        ys.forEach(y=>{
+          const line = linesMap.get(y).sort((a,b)=>a.x-b.x).map(i=>i.str).join(' ').replace(/\s+/g,' ').trim();
+          if(line) all.push(line);
+        });
+      }
+      // de-dupe
+      return [...new Set(all)];
+    }
+
+    // --------- State ---------
+    const parsed = { CustomerNumber:null, Name:null, Contact:null, Tel:null, Street:null, ZIP:null, City:null, Country:'DE - Deutschland', PO_Address:null };
+
+    // ---------- PDF Upload ----------
+    $('#pdfInput').addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try{
+        const lines = await pdfToLines(file);
+
+        // Vendor-Bereich (Indices) markieren, um sie als Kundendaten zu ignorieren
+        const vendorIdx = new Set();
+        lines.forEach((l,i)=>{ if(isVendorLine(l)) { for(let k=Math.max(0,i-2); k<=Math.min(lines.length-1,i+2); k++) vendorIdx.add(k); } });
+        const notVendor = (i) => i>=0 && i<lines.length && !vendorIdx.has(i) && !isVendorLine(lines[i]);
+
+        // Kundennummer: exakt neben "Kunden-Nr.:"
+        for(let i=0;i<lines.length;i++){
+          if(!notVendor(i)) continue;
+          const m = lines[i].match(/Kunden-?Nr\.?\s*:\s*([0-9]+)/i);
+          if(m){ parsed.CustomerNumber = m[1]; break; }
+        }
+
+        // Ansprechpartner & Telefon: "Ansprechpartner: ... Tel: ..."
+        for (let i=0;i<lines.length;i++){
+          if(!notVendor(i)) continue;
+          const m = lines[i].match(/^\s*Ansprechpartner\s*:\s*(.+)$/i);
+          if(m){
+            const raw = m[1].trim();
+            const [namePart, telPart] = raw.split(/\bTel\b\s*:?\s*/i);
+            if (namePart) parsed.Contact = namePart.trim().replace(/[,\s]+$/,'');
+            if (telPart)  parsed.Tel     = telPart.trim();
+            break;
+          }
+        }
+
+        // Prüfobjekt-Adresse (rechts von "Adresse:")
+        for(let i=0;i<lines.length;i++){
+          const m = lines[i].match(/^\s*Adresse\s*:\s*(.+)$/i);
+          if(m){ parsed.PO_Address = m[1].trim(); break; }
+        }
+
+        // Straße (einzeilig, ohne Komma) – frühere Logik
+        let streetIdx=-1;
+        for(let i=0;i<lines.length;i++){
+          if(!notVendor(i)) continue;
+          if(isStreet(lines[i])){ streetIdx=i; break; }
+        }
+        if(streetIdx>=0){
+          parsed.Street = lines[streetIdx];
+
+          // PLZ/Ort: bevorzugt in den nächsten 5 Zeilen nach der Straße
+          let zc=null;
+          for(let j=streetIdx+1; j<=streetIdx+6 && j<lines.length; j++){
+            if(!notVendor(j)) continue;
+            if(isZipCity(lines[j])){ zc=extractZipCity(lines[j]); break; }
+          }
+          // Fallback: global suchen (ohne Vendor)
+          if(!zc){
+            for(let j=0; j<lines.length; j++){
+              if(!notVendor(j)) continue;
+              if(isZipCity(lines[j])){ zc=extractZipCity(lines[j]); break; }
+            }
+          }
+          if(zc){ parsed.ZIP = zc.zip; parsed.City = zc.city; }
+        }
+
+        // Kundenname: LETZTE gültige Zeile des Dokuments (mit Ausschlüssen)
+        // – unabhängig von Straße/PLZ/Ort –
+        for(let i=lines.length-1; i>=0; i--){
+          const txt = lines[i].trim();
+          if(!txt) continue;
+          if(!notVendor(i)) continue;       // Vendor/Absender ausschließen
+          if(isExcludedName(txt)) continue; // deine Ausschlussliste
+          parsed.Name = txt;
+          break;
+        }
+
+        // Country
+        parsed.Country = 'DE - Deutschland';
+
+        // Vorschau
+        $('#pvCustomerNumber').textContent = parsed.CustomerNumber ?? '–';
+        $('#pvName').textContent          = parsed.Name ?? '–';
+        $('#pvContact').textContent       = parsed.Contact ?? '–';
+        $('#pvTel').textContent           = parsed.Tel ?? '–';
+        $('#pvStreet').textContent        = parsed.Street ?? '–';
+        $('#pvZIP').textContent           = parsed.ZIP ?? '–';
+        $('#pvCity').textContent          = parsed.City ?? '–';
+        $('#pvCountry').textContent       = parsed.Country ?? 'DE - Deutschland';
+        $('#pvPO').textContent            = parsed.PO_Address ?? '–';
+        $('#pdfPreviewWrap').style.display='block';
+
+        showAlert('PDF gelesen. Name = letzte gültige Zeile; Straße/PLZ/Ort/Telefon unverändert.', 'success');
+      }catch(err){
+        console.error(err);
+        showAlert('PDF konnte nicht verlässlich gelesen werden. Bitte andere Datei probieren.', 'danger');
+      }
+    });
+
+    // ---------- SQLite (dein bisheriger Teil, unverändert) ----------
     const schemaSQL = `
 CREATE TABLE IF NOT EXISTS android_metadata ( locale TEXT );
 CREATE TABLE IF NOT EXISTS tblCompany (
@@ -135,7 +329,7 @@ CREATE TABLE IF NOT EXISTS tblResults (
   "Min" TEXT NOT NULL,"Max" TEXT NOT NULL,"First" TEXT NOT NULL,"Expected" TEXT NOT NULL,"Result" TEXT NOT NULL,"OK" TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS tblResultsHeader (
-  "ProcedureName" TEXT NOT NULL,"CustomerNumber" INTEGER NOT NULL,"IDNumber" INTEGER NOT NULL,"TestNumber" INTEGER NOT NULL,"OrderNumber" TEXT NOT NULL,
+  "ProcedureName" TEXT NOT NULL,"CustomerNumber" INTEGER NOT NULL,"IDNumber" TEXT NOT NULL,"TestNumber" INTEGER NOT NULL,"OrderNumber" TEXT NOT NULL,
   "Remark" TEXT NOT NULL,"TestDate" TEXT NOT NULL,"TestResult" TEXT NOT NULL,"TestingPerson" TEXT NOT NULL,"Pictures" TEXT NOT NULL,
   "SecutestIDString" TEXT NOT NULL,"SoftwareVersion" TEXT NOT NULL,"SecutestSoftwareVersion" TEXT NOT NULL,"TesterSerialNumber" TEXT NOT NULL,
   "LineVoltage" TEXT NOT NULL,"Protocol" TEXT NOT NULL,"Timestamp" TEXT NOT NULL
@@ -152,200 +346,7 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
       SQL = await initSqlJs({ locateFile: f => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/' + f });
     })();
 
-    // -------- PDF -> lines --------
-    const parsed = {
-      CustomerNumber:null, Name:null, Contact:null, Tel:null,
-      Street:null, ZIP:null, City:null, Country:'DE - Deutschland',
-      PO_Address:null
-    };
-
-    // Lieferant / Vendor-Filter (unverändert)
-    const vendorMatchers = [
-      /E\+?Service\+?Check/i, /Ziegelohstr\.?|Ziegelohstraße/i, /\b06636\b/i, /Laucha/i, /\(Unstrut\)/i
-    ];
-    const isVendorLineText = (txt) => vendorMatchers.some(rx => rx.test(txt));
-
-    // Zusätzliche Zeilen, die niemals Firmenname sind (deine Liste + frühere)
-    const nameExclusionPatterns = [
-      /E\+?\s*Serv(?:ice)?/i,                            // E+Service… inkl. getrennt
-      /Große?\s+Ziegelohstr/i,                           // Straße
-      /\b06636\b/i, /Laucha/i, /Unstrut/i,              // PLZ/Ort Lieferant
-      /Mitglied/i, /Zertifiziert/i, /Unterwegs/i,       // Footer/Claims
-      /Projektleiter/i, /Arbeitsauftrag/i, /Telefon/i, /Fax/i,
-      /USt-?IdNr/i, /IBAN/i, /SWIFT/i, /Bankverbindung/i, /Amtsgericht/i, /Geschäftsführer/i,
-      /Volksbank/i, /Stendal/i, /Halle\/Saale/i,
-      /m\.kain@/i,
-      /Niederlassungen/i, /Hamburg|Berlin|Düsseldorf|Leipzig|Stuttgart|München|Hannover|Frankfurt|Dortmund|Naumburg/i,
-      /E\+?Service\+?Check\s*Gm\s*bH/i,                 // "Gm bH"
-      /Große?\s+Ziegelohstr\.\s*2,\s*06636\s+Laucha\/Unstrut/i,
-      /^Tel\./i, /^Fax\./i,
-      /^Kunden-?Nr\./i,
-      /^Datum\s*:/i,
-      /^Arbeitsauftrag-?Nr\./i,
-      /^Sitz der Gesellschaft/i
-    ];
-    function isExcludedName(txt){
-      if(!txt) return true;
-      const t = txt.trim();
-      if(t.length < 2) return true;
-      if (t.includes(',')) return true; // Prüfobjekt-Zeilen
-      return nameExclusionPatterns.some(rx => rx.test(t));
-    }
-
-    // Helper (wie vorher)
-    const isStreet = s => {
-      if (!s || s.includes(',')) return false;
-      return /[A-Za-zÄÖÜäöüß\.\- ]+\s+\d+[a-zA-Z]?$/.test(s);
-    };
-    const isZipCity = s => {
-      if (!s || s.includes(',')) return false;
-      return /\b\d{5}\b\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-\(\) ]+$/.test(s);
-    };
-    const extractZipCity = s => {
-      const m = s.match(/\b(\d{5})\b\s+([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-\(\) ]+)$/);
-      return m ? {zip:m[1], city:m[2].trim()} : null;
-    };
-
-    async function pdfToLineObjs(file){
-      const ab = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({data: ab}).promise;
-      const all=[]; // -> { text, y }
-      for(let p=1;p<=pdf.numPages;p++){
-        const page = await pdf.getPage(p);
-        const tc = await page.getTextContent();
-        const linesMap = new Map();
-        tc.items.forEach(it=>{
-          const text = it.str || '';
-          const tr = it.transform || [1,0,0,1,0,0];
-          const y = tr[5]||0, x = tr[4]||0;
-          if(!linesMap.has(y)) linesMap.set(y,[]);
-          linesMap.get(y).push({x,text});
-        });
-        const ys = [...linesMap.keys()].sort((a,b)=>a-b);
-        ys.forEach(y=>{
-          const text = linesMap.get(y).sort((a,b)=>a.x-b.x).map(i=>i.text).join(' ').replace(/\s+/g,' ').trim();
-          if(text) all.push({ text, y: Math.round(y) });
-        });
-      }
-      // De-dupe by text
-      const seen = new Set(); const out=[];
-      for(const o of all){ if(seen.has(o.text)) continue; seen.add(o.text); out.push(o); }
-      return out;
-    }
-
-    $('#pdfInput').addEventListener('change', async (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      try{
-        const lineObjs = await pdfToLineObjs(file);
-        const lines = lineObjs.map(o => o.text);
-        const notVendor = (i) => i>=0 && i<lines.length && !isVendorLineText(lines[i]);
-
-        // Kundennummer: exakt rechts neben "Kunden-Nr.:"
-        for(let i=0;i<lines.length;i++){
-          const m = lines[i].match(/Kunden-?Nr\.?\s*:\s*([0-9]+)/i);
-          if(m){ parsed.CustomerNumber = m[1]; break; }
-        }
-
-        // Ansprechpartner & Telefon: "Ansprechpartner: ... Tel: ..."
-        for (let i=0;i<lines.length;i++){
-          const m = lines[i].match(/^\s*Ansprechpartner\s*:\s*(.+)$/i);
-          if(m){
-            const raw = m[1].trim();
-            const [namePart, telPart] = raw.split(/\bTel\b\s*:?\s*/i);
-            if(namePart) parsed.Contact = namePart.trim().replace(/[,\s]+$/,'');
-            if(telPart)  parsed.Tel     = telPart.trim();
-            break;
-          }
-        }
-
-        // Prüfobjekt-Adresse: komplette Zeile hinter "Adresse:"
-        for(let i=0;i<lines.length;i++){
-          const m = lines[i].match(/^\s*Adresse\s*:\s*(.+)$/i);
-          if(m){ parsed.PO_Address = m[1].trim(); break; }
-        }
-
-        // Straße (unverändert)
-        let streetIdx=-1;
-        for(let i=0;i<lines.length;i++){
-          if(!notVendor(i)) continue;
-          if(isStreet(lines[i])){ streetIdx=i; break; }
-        }
-        if(streetIdx>=0){
-          parsed.Street = lines[streetIdx];
-
-          // *** NAME: Zeile physisch über der Straße (Y-Koordinate) ***
-          const streetY = lineObjs[streetIdx].y;
-
-          // Primäre Suche: nahes Umfeld ±6 Zeilen, physisch oberhalb (y > streetY), kein Vendor, nicht ausgeschlossen
-          let bestIdx = -1, bestDy = Infinity;
-          for(let j=Math.max(0, streetIdx-6); j<=Math.min(lines.length-1, streetIdx+6); j++){
-            if(j===streetIdx || !notVendor(j)) continue;
-            const dy = lineObjs[j].y - streetY;
-            if(dy > 0) {
-              const txt = lines[j].trim();
-              if(!isExcludedName(txt)) {
-                if(dy < bestDy){ bestDy = dy; bestIdx = j; }
-              }
-            }
-          }
-
-          // Fallback: im gesamten Dokument die nächsthöhere (y > streetY) geeignete Zeile nehmen
-          if(bestIdx === -1){
-            for(let j=0;j<lines.length;j++){
-              if(j===streetIdx || !notVendor(j)) continue;
-              const dy = lineObjs[j].y - streetY;
-              if(dy > 0){
-                const txt = lines[j].trim();
-                if(!isExcludedName(txt)){
-                  if(dy < bestDy){ bestDy = dy; bestIdx = j; }
-                }
-              }
-            }
-          }
-
-          if(bestIdx !== -1) parsed.Name = lines[bestIdx].trim();
-
-          // ZIP/City – **genau die vorherige Logik**:
-          // Bevorzugt: in den nächsten 5 Zeilen nach der Straße (nicht Vendor)
-          let zc=null, zcIdx=-1;
-          for(let j=streetIdx+1; j<Math.min(lines.length, streetIdx+6); j++){
-            if(!notVendor(j)) continue;
-            if(isZipCity(lines[j])){ zcIdx=j; zc=extractZipCity(lines[j]); break; }
-          }
-          // Fallback: global, aber nicht Vendor
-          if(!zc){
-            for(let j=0;j<lines.length;j++){
-              if(!notVendor(j)) continue;
-              if(isZipCity(lines[j])){ zcIdx=j; zc=extractZipCity(lines[j]); break; }
-            }
-          }
-          if(zc){ parsed.ZIP = zc.zip; parsed.City = zc.city; }
-        }
-
-        // Country fix
-        parsed.Country = 'DE - Deutschland';
-
-        // Vorschau füllen
-        $('#pvCustomerNumber').textContent = parsed.CustomerNumber ?? '–';
-        $('#pvName').textContent          = parsed.Name ?? '–';
-        $('#pvContact').textContent       = parsed.Contact ?? '–';
-        $('#pvTel').textContent           = parsed.Tel ?? '–';
-        $('#pvStreet').textContent        = parsed.Street ?? '–';
-        $('#pvZIP').textContent           = parsed.ZIP ?? '–';
-        $('#pvCity').textContent          = parsed.City ?? '–';
-        $('#pvCountry').textContent       = parsed.Country ?? 'DE - Deutschland';
-        $('#pvPO').textContent            = parsed.PO_Address ?? '–';
-        $('#pdfPreviewWrap').style.display='block';
-
-        showAlert('PDF gelesen. Name über der Straße (Y-Koordinate) inkl. Fallback; ZIP/City & Tel unverändert.', 'success');
-      }catch(err){
-        console.error(err);
-        showAlert('PDF konnte nicht verlässlich gelesen werden. Bitte andere Datei probieren.', 'danger');
-      }
-    });
-
-    // ---------- DB bauen & exportieren ----------
+    // DB bauen & exportieren (unverändert)
     let SQLDB;
     async function buildAndExport(){
       if(!SQL){ showAlert('SQL-Engine lädt noch. Bitte erneut versuchen …','warning'); return; }
@@ -398,7 +399,37 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
           const stmt = db.prepare(sql); stmt.bind(params2); stmt.step(); stmt.free();
         }
 
-        // Optional: Seeds (wie gehabt – weggelassen, falls du sie schon drin hattest)
+        // Seeds
+        const seedSQL = `
+INSERT INTO tblDeviceAbbreviations ("DeviceAbbreviation","DeviceDescription","Timestamp") VALUES
+('BDA','Beleuchtungs-Daueranschluss','2021-05-19 08:16:25'),
+('BPA','Beleuchtungs-Prüfanschluss','2021-05-19 08:16:25'),
+('ESA','Einphasenanschluss','2021-05-19 08:16:25'),
+('DSA','Dreiphasenanschluss','2021-05-19 08:16:25'),
+('RPA','Röntgenprüfanschluss','2021-05-19 08:16:25'),
+('CSA','Computersystemanschluss','2021-05-19 08:16:25');
+
+INSERT INTO tblIDNumberCaptions ("Name","Order","NewOrder","ColumnNo","NewCaption","Hide","ProtocolNumber","Mandatory","Export","TimeStamp") VALUES
+('Inventarnummer',1,NULL,1,'Inventarnummer',0,1,1,1,'2021-05-19 08:16:25'),
+('Standort',2,NULL,2,'Standort',0,1,1,1,'2021-05-19 08:16:25'),
+('Bezeichnung',3,NULL,3,'Bezeichnung',0,1,1,1,'2021-05-19 08:16:25'),
+('Hersteller',4,NULL,4,'Hersteller',0,1,1,1,'2021-05-19 08:16:25'),
+('Typ',5,NULL,5,'Typ',0,1,1,1,'2021-05-19 08:16:25'),
+('Klasse',6,NULL,6,'Klasse',0,1,1,1,'2021-05-19 08:16:25'),
+('Norm',7,NULL,7,'Norm',0,1,1,1,'2021-05-19 08:16:25'),
+('Unter-Norm',8,NULL,8,'Unter-Norm',0,1,1,1,'2021-05-19 08:16:25'),
+('Fabriknummer',9,NULL,9,'Fabriknummer',0,1,1,1,'2021-05-19 08:16:25'),
+('Benutzer1',10,NULL,10,'Benutzer1',0,1,0,1,'2021-05-19 08:16:25'),
+('Benutzer2',11,NULL,11,'Benutzer2',0,1,0,1,'2021-05-19 08:16:25'),
+('Benutzer3',12,NULL,12,'Benutzer3',0,1,0,1,'2021-05-19 08:16:25');
+
+INSERT INTO tblMasterProcedureCopy ("FunctionNumber","FunctionName","Test","StatusText","Picture","WorstCase","TestTime","Parameter1","Parameter2","Parameter3","Parameter4","Min","Max","First","Expected","Unit","RangeMin","RangeMax","TypeParameter1","TypeParameter2","TypeParameter3","TypeParameter4","WorstCaseCondition","Simulation","WebServer") VALUES
+(1,'Schutzleiter','PE-Test','Bestanden',NULL,0,1.5,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'Ohm',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0),
+(2,'Isolationswiderstand','Iso-Test','Bestanden',NULL,0,2.3,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'MΩ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0),
+(3,'Ersatzableitstrom','EA-Test','Bestanden',NULL,0,2.9,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'mA',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0),
+(4,'Funktionsprüfung','FP-Test','Bestanden',NULL,0,4.1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0);
+        `.trim();
+        db.run(seedSQL);
 
         db.run('COMMIT;');
 
@@ -419,10 +450,6 @@ CREATE TABLE IF NOT EXISTS tblVisInspectionWeldingResults ("ProcedureName" TEXT,
     }
 
     $('#btnBuild').addEventListener('click', buildAndExport);
-
-    function showAlert(html, type='info'){
-      $('#alertBox').innerHTML = `<div class="alert alert-${type} mb-0" role="alert">${html}</div>`;
-    }
   </script>
 </body>
 </html>
